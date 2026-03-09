@@ -249,3 +249,53 @@ h2 {
   color: #333;
   font-size: 1em;
 }
+
+/* File creation table (Finished Product) */
+.format-section {
+  width: 100%;
+}
+.table-actions {
+  margin: 10px 0;
+  text-align: left;
+}
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+}
+.data-table th,
+.data-table td {
+  border: 1px solid #e0e0e0;
+  padding: 8px;
+  font-size: 0.9em;
+  text-align: left;
+  vertical-align: top;
+}
+.data-table th {
+  background-color: #f5f8fb;
+  font-weight: 600;
+}
+.data-table input[type='text'] {
+  width: 100%;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+.row-remove-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+.row-remove-btn:hover {
+  background-color: #c82333;
+}

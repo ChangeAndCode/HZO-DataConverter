@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creación de archivos de Archivos</title>
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="stylesheet" href="../css/file-conversion.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>Creación de Archivos API</h1>
+
+    <div class="form-group">
+      <label for="fileType">Tipo de Archivo a Crear:</label>
+      <select id="fileType">
+        <option value="">-- Seleccione el tipo --</option>
+        <option value="finishedProduct">Finished Product</option>
+        <option value="rawMaterial">Raw Material</option>
+        <option value="billOfMaterials">Bill of Materials</option>
+        <option value="splScrap">Packing List (SPL/Scrap)</option>
+      </select>
+    </div>
+
+    <div id="format-finishedProduct" class="format-section hidden">
+      <div class="table-actions">
+        <button type="button" id="fpAddRowBtn">Agregar fila</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="fpTable" class="data-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="format-rawMaterial" class="format-section hidden">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+    </div>
+
+    <div id="format-billOfMaterials" class="format-section hidden">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+    </div>
+
+    <div id="format-splScrap" class="format-section hidden">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+      <input type="text" placeholder="partNumber">
+    </div>
+
+    <button id="createFileButton">
+      <span class="btn-text">Crear Archivo</span>
+      <span class="spinner hidden"></span>
+    </button>
+  </div>
+  <script type="module" src="../js/file-creation.js"></script>
+</body>
+
+</html>

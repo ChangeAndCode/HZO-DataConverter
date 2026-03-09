@@ -123,6 +123,11 @@ app.get("/file-conversion", authenticateRequest, (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "file-conversion.html"));
 });
 
+// File Creation page - requires authentication
+app.get("/file-creation", authenticateRequest, (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "file-creation.html"));
+});
+
 // Admin Dashboard page - requires authentication AND admin role
 app.get("/admin-dashboard", authenticateRequest, ensureAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "admin-dashboard.html"));

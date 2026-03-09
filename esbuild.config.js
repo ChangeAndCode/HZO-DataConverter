@@ -18,6 +18,7 @@ const commonBuildOptions = {
     `${srcdir}/js/register.js`,
     `${srcdir}/js/dashboard.js`,
     `${srcdir}/js/file-conversion.js`,
+    `${srcdir}/js/file-creation.js`,
     `${srcdir}/js/admin-dashboard.js`,
     `${srcdir}/css/main.css`,
     `${srcdir}/css/login.css`,
