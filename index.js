@@ -63,7 +63,7 @@ app.use(
     store: MongoStore.create({
       // IMPORTANT: Using process.env.MONGO_URI as in your first version
       mongoUrl: process.env.MONGO_URI,
-      collectionName: "sessions_conmed", // Name of the collection in MongoDB to store sessions
+      collectionName: "sessions_hzo", // Name of the collection in MongoDB to store sessions
       ttl: 14 * 24 * 60 * 60, // Session TTL in seconds (14 days)
       autoRemove: "interval", // Auto-remove expired sessions
       autoRemoveInterval: 10, // Interval in minutes to remove expired sessions
