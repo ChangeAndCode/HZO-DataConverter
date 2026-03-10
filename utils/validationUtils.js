@@ -3,6 +3,7 @@ const { isValidCountryCode } = require("../data/countryCatalog");
 
 // Reglas de formato
 const HTS_FORMATTED_RE = /^\d{4}\.\d{2}\.\d{4}$/; // ####.##.####
+const PART_NUMBER_RE = /^[A-Z0-9 ._\/-]+$/;
 const isBlank = (v) => v === null || v === undefined || String(v).trim() === "";
 const ALLOW_EMPTY_MANDATORY_FIELDS =
   (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() === "true";
@@ -17,6 +18,10 @@ const ALLOW_EMPTY_MANDATORY_FIELDS =
  */
 const validateDataIntegrity = (data, documentType) => {
   const { schemaSpec } = getRegistryEntry(documentType);
+  const partNumberSpec =
+    documentType === "finishedProduct"
+      ? schemaSpec.find((f) => f.dataElement === "Part Number")
+      : null;
   const errors = [];
   const records = data.Sheet1;
 
@@ -69,6 +74,33 @@ const validateDataIntegrity = (data, documentType) => {
         }
       }
     });
+
+    // 1.1) Finished Product: Part Number (alphanumeric, max length)
+    if (documentType === "finishedProduct" && partNumberSpec) {
+      const pnRaw = record["Part Number"];
+      if (!isBlank(pnRaw)) {
+        const pn = String(pnRaw).trim().toUpperCase();
+        if (pn.length > partNumberSpec.length) {
+          errors.push({
+            type: "Integrity Error",
+            message: `Row ${rowNum}: "Part Number" exceeds max length ${partNumberSpec.length}. Got ${pn.length}.`,
+            field: "Part Number",
+            row: rowNum,
+            value: pnRaw,
+            expectedMaxLength: partNumberSpec.length,
+          });
+        }
+        if (!PART_NUMBER_RE.test(pn)) {
+          errors.push({
+            type: "Integrity Error",
+            message: `Row ${rowNum}: "Part Number" must be alphanumeric (A-Z, 0-9) and may include space, dot, underscore, slash, or hyphen.`,
+            field: "Part Number",
+            row: rowNum,
+            value: pnRaw,
+          });
+        }
+      }
+    }
 
     // 2) Validación de formato HTS
     if (documentType === "finishedProduct") {

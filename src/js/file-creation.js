@@ -1,5 +1,7 @@
 const fileType = document.getElementById('fileType');
 const sections = document.querySelectorAll('.format-section');
+const createFileButton = document.getElementById('createFileButton');
+const validationResult = document.getElementById('validationResult');
 
 const map = {
   finishedProduct: 'format-finishedProduct',
@@ -9,7 +11,7 @@ const map = {
 };
 
 const finishedProductColumns = [
-  { key: 'partNumber', label: 'Part Number' },
+  { key: 'partNumber', label: 'Part Number', maxLength: 30, required: true },
   { key: 'description', label: 'Description' },
   { key: 'unitWeightLb', label: 'Unit Weight Lb.' },
   { key: 'dutiableValueUsd', label: 'Dutiable Value (USD)' },
@@ -79,6 +81,13 @@ function addFinishedProductRow() {
     input.type = 'text';
     input.name = `finishedProduct[${col.key}][]`;
     input.placeholder = col.label;
+    if (col.maxLength) input.maxLength = col.maxLength;
+    if (col.required) input.required = true;
+    if (col.key === 'partNumber') {
+      input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+      });
+    }
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -116,6 +125,89 @@ if (fpAddRowBtn) {
   fpAddRowBtn.addEventListener('click', addFinishedProductRow);
 }
 
+function setValidationResult(errors) {
+  if (!validationResult) return;
+
+  validationResult.classList.remove('hidden', 'success', 'error', 'warning');
+  validationResult.innerHTML = '';
+
+  if (!errors || errors.length === 0) {
+    validationResult.classList.add('success');
+    const h4 = document.createElement('h4');
+    h4.textContent = 'Sin errores';
+    const p = document.createElement('p');
+    p.textContent = 'La informaci\u00f3n es v\u00e1lida.';
+    validationResult.append(h4, p);
+    return;
+  }
+
+  validationResult.classList.add('error');
+  const h4 = document.createElement('h4');
+  h4.textContent = `Errores (${errors.length})`;
+  const ul = document.createElement('ul');
+  errors.forEach((err) => {
+    const li = document.createElement('li');
+    li.textContent = err.message || JSON.stringify(err);
+    ul.appendChild(li);
+  });
+  validationResult.append(h4, ul);
+}
+
+function collectFinishedProductRows() {
+  if (!fpBody) return [];
+  const rows = [];
+  fpBody.querySelectorAll('tr').forEach((tr) => {
+    const inputs = tr.querySelectorAll('input');
+    const row = {};
+    finishedProductColumns.forEach((col, idx) => {
+      const val = inputs[idx] ? inputs[idx].value : '';
+      row[col.label] = val;
+    });
+    const hasValue = Object.values(row).some(
+      (v) => String(v).trim() !== ''
+    );
+    if (hasValue) rows.push(row);
+  });
+  return rows;
+}
+
+async function validateFinishedProductRows() {
+  const rows = collectFinishedProductRows();
+  if (!rows.length) {
+    setValidationResult([
+      { message: 'No hay filas con datos para validar.' },
+    ]);
+    return;
+  }
+
+  const spinner = createFileButton
+    ? createFileButton.querySelector('.spinner')
+    : null;
+  if (createFileButton) createFileButton.disabled = true;
+  if (spinner) spinner.classList.remove('hidden');
+
+  try {
+    const response = await fetch('/api/files/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documentType: 'finishedProduct',
+        rows,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al validar.');
+    }
+    setValidationResult(data.errors || []);
+  } catch (err) {
+    setValidationResult([{ message: err.message || 'Error al validar.' }]);
+  } finally {
+    if (createFileButton) createFileButton.disabled = false;
+    if (spinner) spinner.classList.add('hidden');
+  }
+}
+
 if (fileType) {
   fileType.addEventListener('change', (e) => {
     showFormat(e.target.value);
@@ -123,4 +215,16 @@ if (fileType) {
 
   // Para cargar el estado inicial
   showFormat(fileType.value);
+}
+
+if (createFileButton) {
+  createFileButton.addEventListener('click', () => {
+    if (fileType && fileType.value !== 'finishedProduct') {
+      setValidationResult([
+        { message: 'Selecciona "Finished Product" para validar.' },
+      ]);
+      return;
+    }
+    validateFinishedProductRows();
+  });
 }

@@ -5,6 +5,11 @@ const path = require("path");
 const fs = require("fs/promises");
 const { detectDocumentType } = require("../utils/documentDetector");
 const { validateFormatCompatibility } = require("../utils/documentFormatRules");
+const {
+  validateDataIntegrity,
+  applyBusinessValidations,
+} = require("../utils/validationUtils");
+const { applyTransformations } = require("../utils/transformationUtils");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -260,9 +265,41 @@ const getErrorReport = async (req, res) => {
   }
 };
 
+const validateManualData = async (req, res) => {
+  const { documentType, rows } = req.body || {};
+
+  if (!documentType) {
+    return res.status(400).json({ message: "documentType es requerido." });
+  }
+  if (!Array.isArray(rows)) {
+    return res.status(400).json({ message: "rows debe ser un arreglo." });
+  }
+
+  const parsedData = { Sheet1: rows };
+  const transformedData = applyTransformations(parsedData, documentType);
+  const integrityResult = validateDataIntegrity(transformedData, documentType);
+  const errors = [...integrityResult.errors];
+
+  if (integrityResult.isValid) {
+    const businessResult = await applyBusinessValidations(
+      transformedData,
+      documentType
+    );
+    if (!businessResult.isValid) {
+      errors.push(...businessResult.errors);
+    }
+  }
+
+  return res.status(200).json({
+    isValid: errors.length === 0,
+    errors,
+  });
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
   getConvertedFile,
   getErrorReport,
+  validateManualData,
 };

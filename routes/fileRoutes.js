@@ -20,6 +20,9 @@ router.post(
   fileController.uploadAndConvertFile,
 );
 
+// Ruta para validar datos manuales (file creation)
+router.post('/validate', API_PROTECTED, fileController.validateManualData);
+
 // Ruta para descargar un archivo convertido
 router.get('/:jobId/download', API_PROTECTED, fileController.getConvertedFile);
 
