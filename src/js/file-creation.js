@@ -46,11 +46,34 @@ const finishedProductColumns = [
   { key: 'USML (ITAR)', label: 'USML (ITAR)' },
 ];
 
+const rawMaterialColumns = [
+  { key: 'partNumber', label: 'Part Number', maxLength: 30, required: true },
+  { key: 'description', label: 'Description', maxLength: 60, required: true },
+  { key: 'unitWeightLb', label: 'Unit Weight Lb.', required: true },
+  { key: 'unitCostUsd', label: 'Unit Cost (USD)', required: true },
+  { key: 'unitOfMeasure', label: 'Unit of measure', maxLength: 3, required: true },
+  { key: 'countryOfOrigin', label: 'Country of origin', maxLength: 2, required: true },
+  { key: 'importHts', label: 'Importation HTS Code', required: true },
+  { key: 'exportHts', label: 'Exportation HTS Code', required: true },
+  { key: 'eccn', label: 'ECCN', required: true },
+  { key: 'filler', label: 'Filler' },
+  { key: 'licenseNumber', label: 'License Number (LCN)' },
+  { key: 'licenseException', label: 'License Exception' },
+  { key: 'licenseExpiration', label: 'License Expiration date' },
+  { key: 'usml', label: 'USML (ITAR)' },
+];
+
 const fpTable = document.getElementById('fpTable');
 const fpHead = fpTable ? fpTable.querySelector('thead') : null;
 const fpBody = fpTable ? fpTable.querySelector('tbody') : null;
 const fpAddRowBtn = document.getElementById('fpAddRowBtn');
 let fpInitialized = false;
+
+const rmTable = document.getElementById('rmTable');
+const rmHead = rmTable ? rmTable.querySelector('thead') : null;
+const rmBody = rmTable ? rmTable.querySelector('tbody') : null;
+const rmAddRowBtn = document.getElementById('rmAddRowBtn');
+let rmInitialized = false;
 
 function buildFinishedProductTable() {
   if (!fpHead || !fpBody) return;
@@ -69,6 +92,25 @@ function buildFinishedProductTable() {
 
   fpBody.innerHTML = '';
   addFinishedProductRow();
+}
+
+function buildRawMaterialTable() {
+  if (!rmHead || !rmBody) return;
+
+  rmHead.innerHTML = '';
+  const headerRow = document.createElement('tr');
+  rawMaterialColumns.forEach((col) => {
+    const th = document.createElement('th');
+    th.textContent = col.label;
+    headerRow.appendChild(th);
+  });
+  const actionsTh = document.createElement('th');
+  actionsTh.textContent = 'Acciones';
+  headerRow.appendChild(actionsTh);
+  rmHead.appendChild(headerRow);
+
+  rmBody.innerHTML = '';
+  addRawMaterialRow();
 }
 
 function addFinishedProductRow() {
@@ -109,6 +151,44 @@ function addFinishedProductRow() {
   fpBody.appendChild(row);
 }
 
+function addRawMaterialRow() {
+  if (!rmBody) return;
+  const row = document.createElement('tr');
+
+  rawMaterialColumns.forEach((col) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = `rawMaterial[${col.key}][]`;
+    input.placeholder = col.label;
+    if (col.maxLength) input.maxLength = col.maxLength;
+    if (col.required) input.required = true;
+    if (col.key === 'partNumber') {
+      input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+      });
+    }
+    td.appendChild(input);
+    row.appendChild(td);
+  });
+
+  const actionsTd = document.createElement('td');
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove-btn';
+  removeBtn.textContent = 'Eliminar';
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    if (rmBody.children.length === 0) {
+      addRawMaterialRow();
+    }
+  });
+  actionsTd.appendChild(removeBtn);
+  row.appendChild(actionsTd);
+
+  rmBody.appendChild(row);
+}
+
 function showFormat(type) {
   sections.forEach((s) => s.classList.add('hidden'));
   const id = map[type];
@@ -119,10 +199,18 @@ function showFormat(type) {
     buildFinishedProductTable();
     fpInitialized = true;
   }
+  if (type === 'rawMaterial' && !rmInitialized) {
+    buildRawMaterialTable();
+    rmInitialized = true;
+  }
 }
 
 if (fpAddRowBtn) {
   fpAddRowBtn.addEventListener('click', addFinishedProductRow);
+}
+
+if (rmAddRowBtn) {
+  rmAddRowBtn.addEventListener('click', addRawMaterialRow);
 }
 
 function renderErrorList(errors, title = 'Errores') {
@@ -216,8 +304,25 @@ function collectFinishedProductRows() {
   return rows;
 }
 
-async function createFinishedProductFile() {
-  const rows = collectFinishedProductRows();
+function collectRawMaterialRows() {
+  if (!rmBody) return [];
+  const rows = [];
+  rmBody.querySelectorAll('tr').forEach((tr) => {
+    const inputs = tr.querySelectorAll('input');
+    const row = {};
+    rawMaterialColumns.forEach((col, idx) => {
+      const val = inputs[idx] ? inputs[idx].value : '';
+      row[col.label] = val;
+    });
+    const hasValue = Object.values(row).some(
+      (v) => String(v).trim() !== ''
+    );
+    if (hasValue) rows.push(row);
+  });
+  return rows;
+}
+
+async function createManualFile(documentType, rows) {
   if (!rows.length) {
     renderErrorList([{ message: 'No hay filas con datos para crear.' }]);
     return;
@@ -234,7 +339,7 @@ async function createFinishedProductFile() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        documentType: 'finishedProduct',
+        documentType,
         rows,
       }),
     });
@@ -270,12 +375,18 @@ if (fileType) {
 
 if (createFileButton) {
   createFileButton.addEventListener('click', () => {
-    if (fileType && fileType.value !== 'finishedProduct') {
-      renderErrorList([
-        { message: 'Selecciona "Finished Product" para crear.' },
-      ]);
+    if (!fileType || !fileType.value) {
+      renderErrorList([{ message: 'Selecciona un tipo de archivo.' }]);
       return;
     }
-    createFinishedProductFile();
+    if (fileType.value === 'finishedProduct') {
+      createManualFile('finishedProduct', collectFinishedProductRows());
+      return;
+    }
+    if (fileType.value === 'rawMaterial') {
+      createManualFile('rawMaterial', collectRawMaterialRows());
+      return;
+    }
+    renderErrorList([{ message: 'Este tipo a\u00fan no est\u00e1 disponible.' }]);
   });
 }
