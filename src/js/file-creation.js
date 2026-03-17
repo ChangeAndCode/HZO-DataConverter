@@ -125,32 +125,77 @@ if (fpAddRowBtn) {
   fpAddRowBtn.addEventListener('click', addFinishedProductRow);
 }
 
-function setValidationResult(errors) {
+function renderErrorList(errors, title = 'Errores') {
   if (!validationResult) return;
-
   validationResult.classList.remove('hidden', 'success', 'error', 'warning');
+  validationResult.classList.add('error');
   validationResult.innerHTML = '';
 
-  if (!errors || errors.length === 0) {
-    validationResult.classList.add('success');
-    const h4 = document.createElement('h4');
-    h4.textContent = 'Sin errores';
-    const p = document.createElement('p');
-    p.textContent = 'La informaci\u00f3n es v\u00e1lida.';
-    validationResult.append(h4, p);
-    return;
-  }
-
-  validationResult.classList.add('error');
+  const safeErrors = Array.isArray(errors) ? errors : [];
   const h4 = document.createElement('h4');
-  h4.textContent = `Errores (${errors.length})`;
+  h4.textContent = `${title} (${safeErrors.length})`;
   const ul = document.createElement('ul');
-  errors.forEach((err) => {
+  safeErrors.forEach((err) => {
     const li = document.createElement('li');
     li.textContent = err.message || JSON.stringify(err);
     ul.appendChild(li);
   });
   validationResult.append(h4, ul);
+}
+
+function renderSuccess(jobId) {
+  if (!validationResult) return;
+  validationResult.classList.remove('hidden', 'success', 'error', 'warning');
+  validationResult.classList.add('success');
+  validationResult.innerHTML = '';
+
+  const h4 = document.createElement('h4');
+  h4.textContent = 'Archivo creado';
+  const p = document.createElement('p');
+  p.textContent = 'El archivo se gener\u00f3 correctamente.';
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+  const link = document.createElement('a');
+  link.href = `/api/files/${jobId}/download`;
+  link.target = '_blank';
+  link.textContent = 'Descargar Archivo';
+  actions.appendChild(link);
+
+  validationResult.append(h4, p, actions);
+}
+
+function renderWarning(errors, jobId) {
+  if (!validationResult) return;
+  validationResult.classList.remove('hidden', 'success', 'error', 'warning');
+  validationResult.classList.add('warning');
+  validationResult.innerHTML = '';
+
+  const h4 = document.createElement('h4');
+  h4.textContent = 'Creado con errores';
+  const p = document.createElement('p');
+  p.textContent =
+    'El archivo se proces\u00f3, pero se encontraron problemas.';
+
+  validationResult.append(h4, p);
+
+  if (Array.isArray(errors) && errors.length > 0) {
+    const ul = document.createElement('ul');
+    errors.forEach((err) => {
+      const li = document.createElement('li');
+      li.textContent = err.message || JSON.stringify(err);
+      ul.appendChild(li);
+    });
+    validationResult.appendChild(ul);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+  const link = document.createElement('a');
+  link.href = `/api/files/${jobId}/errors`;
+  link.target = '_blank';
+  link.textContent = 'Descargar Reporte de Errores';
+  actions.appendChild(link);
+  validationResult.appendChild(actions);
 }
 
 function collectFinishedProductRows() {
@@ -171,12 +216,10 @@ function collectFinishedProductRows() {
   return rows;
 }
 
-async function validateFinishedProductRows() {
+async function createFinishedProductFile() {
   const rows = collectFinishedProductRows();
   if (!rows.length) {
-    setValidationResult([
-      { message: 'No hay filas con datos para validar.' },
-    ]);
+    renderErrorList([{ message: 'No hay filas con datos para crear.' }]);
     return;
   }
 
@@ -187,7 +230,7 @@ async function validateFinishedProductRows() {
   if (spinner) spinner.classList.remove('hidden');
 
   try {
-    const response = await fetch('/api/files/validate', {
+    const response = await fetch('/api/files/create-manual', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -197,11 +240,19 @@ async function validateFinishedProductRows() {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || 'Error al validar.');
+      throw new Error(data.message || 'Error al crear.');
     }
-    setValidationResult(data.errors || []);
+    if (data.status === 'completed') {
+      renderSuccess(data.jobId);
+    } else if (data.status === 'completed_with_errors') {
+      renderWarning(data.errors || [], data.jobId);
+    } else {
+      renderErrorList(
+        data.errors || [{ message: 'No se pudo crear el archivo.' }]
+      );
+    }
   } catch (err) {
-    setValidationResult([{ message: err.message || 'Error al validar.' }]);
+    renderErrorList([{ message: err.message || 'Error al crear archivo.' }]);
   } finally {
     if (createFileButton) createFileButton.disabled = false;
     if (spinner) spinner.classList.add('hidden');
@@ -220,11 +271,11 @@ if (fileType) {
 if (createFileButton) {
   createFileButton.addEventListener('click', () => {
     if (fileType && fileType.value !== 'finishedProduct') {
-      setValidationResult([
-        { message: 'Selecciona "Finished Product" para validar.' },
+      renderErrorList([
+        { message: 'Selecciona "Finished Product" para crear.' },
       ]);
       return;
     }
-    validateFinishedProductRows();
+    createFinishedProductFile();
   });
 }

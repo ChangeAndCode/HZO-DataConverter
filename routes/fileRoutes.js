@@ -23,6 +23,9 @@ router.post(
 // Ruta para validar datos manuales (file creation)
 router.post('/validate', API_PROTECTED, fileController.validateManualData);
 
+// Ruta para crear archivo desde datos manuales (file creation)
+router.post('/create-manual', API_PROTECTED, fileController.createManualFile);
+
 // Ruta para descargar un archivo convertido
 router.get('/:jobId/download', API_PROTECTED, fileController.getConvertedFile);
 

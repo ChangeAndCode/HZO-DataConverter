@@ -4,7 +4,10 @@ const conversionJobRepository = require("../repositories/conversionJobRepository
 const path = require("path");
 const fs = require("fs/promises");
 const { detectDocumentType } = require("../utils/documentDetector");
-const { validateFormatCompatibility } = require("../utils/documentFormatRules");
+const {
+  validateFormatCompatibility,
+  getDefaultFormat,
+} = require("../utils/documentFormatRules");
 const {
   validateDataIntegrity,
   applyBusinessValidations,
@@ -101,7 +104,7 @@ const uploadAndConvertFile = async (req, res) => {
   if (!req.user || !req.user.id) {
     await fs.unlink(tempFilePath);
     return res.status(401).json({
-      message: "Usuario no autenticado para realizar esta operación.",
+      message: "Usuario no autenticado para realizar esta operacion.",
     });
   }
 
@@ -296,10 +299,90 @@ const validateManualData = async (req, res) => {
   });
 };
 
+const createManualFile = async (req, res) => {
+  const { documentType, rows, outputFormat } = req.body || {};
+
+  if (!documentType) {
+    return res.status(400).json({ message: "documentType es requerido." });
+  }
+  if (!Array.isArray(rows)) {
+    return res.status(400).json({ message: "rows debe ser un arreglo." });
+  }
+
+  const finalOutputFormat = outputFormat || getDefaultFormat(documentType);
+  if (!finalOutputFormat) {
+    return res.status(400).json({
+      message: "No se pudo determinar el formato de salida.",
+    });
+  }
+
+  const formatValidation = validateFormatCompatibility(
+    documentType,
+    finalOutputFormat
+  );
+  if (!formatValidation.isValid) {
+    return res.status(400).json({ message: formatValidation.message });
+  }
+
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({
+      message: "Usuario no autenticado para realizar esta operacion.",
+    });
+  }
+
+  let newJob;
+  try {
+    newJob = await conversionJobRepository.createConversionJob({
+      userId: req.user.id,
+      fileName: `manual-${documentType}.${finalOutputFormat}`,
+      originalFilePath: `manual-${documentType}`,
+      outputFormat: finalOutputFormat,
+      conversionOptions: { documentType },
+      status: "processing",
+      isAutomated: false,
+    });
+
+    const { convertedFilePath, errorReportPath, status, errors } =
+      await fileConversionService.processManualDataForConversion(
+        rows,
+        finalOutputFormat,
+        { documentType }
+      );
+
+    await conversionJobRepository.updateConversionJobStatus(newJob._id, status, {
+      convertedFilePath,
+      errorReportPath,
+      completedAt: new Date(),
+    });
+
+    return res.status(200).json({
+      message: "Archivo procesado exitosamente.",
+      jobId: newJob._id,
+      documentType,
+      status,
+      errors: errors || [],
+    });
+  } catch (error) {
+    console.error("Error al procesar datos manuales:", error);
+    if (newJob && newJob._id) {
+      await conversionJobRepository.updateConversionJobStatus(
+        newJob._id,
+        "failed",
+        { errorMessage: error.message }
+      );
+    }
+    return res.status(500).json({
+      message: "Error al procesar los datos manuales.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
   getConvertedFile,
   getErrorReport,
   validateManualData,
+  createManualFile,
 };

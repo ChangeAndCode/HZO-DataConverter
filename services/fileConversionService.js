@@ -145,6 +145,111 @@ const processFileForConversion = async (
   };
 };
 
+// Service for manual (UI) data creation without an input file
+const processManualDataForConversion = async (
+  rows,
+  outputFormat,
+  conversionOptions = {}
+) => {
+  const { documentType } = conversionOptions;
+
+  if (!documentType) {
+    throw new Error(
+      "Document type (e.g., 'finishedProduct') is required for processing."
+    );
+  }
+
+  const parsedData = { Sheet1: Array.isArray(rows) ? rows : [] };
+
+  // Step 1: Transformation (e.g., normalize enum values)
+  const transformedData = applyTransformations(parsedData, documentType);
+
+  // Step 2: Validation (Data Integrity and Business Rules)
+  let errorReport = [];
+  const integrityResult = validateDataIntegrity(transformedData, documentType);
+  if (!integrityResult.isValid) {
+    errorReport.push(...integrityResult.errors);
+  }
+
+  if (integrityResult.isValid) {
+    const businessValidationResult = await applyBusinessValidations(
+      transformedData,
+      documentType
+    );
+    if (!businessValidationResult.isValid) {
+      errorReport.push(...businessValidationResult.errors);
+    }
+  }
+
+  const hasErrors = errorReport.length > 0;
+
+  // Step 3: Output file generation (optional)
+  const outputExt = outputFormat || getDefaultFormat(documentType) || "txt";
+  const isSplScrap = documentType === "splScrap";
+
+  // Build a consistent base name for output + error report
+  let outputBaseName = null;
+  if (isSplScrap) {
+    const prefix = pickSplScrapPrefix(transformedData);
+    outputBaseName = generateSplScrapFilename(prefix, new Date());
+  } else {
+    const typePrefixMap = {
+      finishedProduct: "FG",
+      rawMaterial: "RM",
+      billOfMaterials: "BM",
+    };
+    const fileType = typePrefixMap[documentType];
+    outputBaseName = fileType
+      ? generateFilename(fileType, new Date())
+      : `MANUAL_${Date.now()}`;
+  }
+
+  const outputFileName = `${outputBaseName}.${outputExt}`;
+  let convertedFilePath = null;
+
+  if (!hasErrors || WRITE_TXT_ON_VALIDATION_ERROR) {
+    convertedFilePath = path.join(
+      __dirname,
+      "..",
+      "temp_converted_files",
+      outputFileName
+    );
+    await fs.mkdir(path.dirname(convertedFilePath), { recursive: true });
+
+    if (isSplScrap) {
+      await writeSplScrapCSV(transformedData, convertedFilePath);
+    } else {
+      await writeToStandardizedTXT(
+        transformedData,
+        convertedFilePath,
+        documentType
+      );
+    }
+  }
+
+  // Step 4: Error report generation if any errors occurred
+  let errorReportPath = null;
+  if (hasErrors) {
+    const errorReportFileName = `${outputBaseName}-errors.json`;
+    errorReportPath = path.join(
+      __dirname,
+      "..",
+      "temp_error_reports",
+      errorReportFileName
+    );
+    await fs.mkdir(path.dirname(errorReportPath), { recursive: true });
+    await fs.writeFile(errorReportPath, JSON.stringify(errorReport, null, 2));
+  }
+
+  return {
+    convertedFilePath,
+    errorReportPath,
+    status: hasErrors ? "completed_with_errors" : "completed",
+    errors: errorReport,
+    outputFileName,
+  };
+};
+
 /**
  * Writes data to a standardized plain text file based on the schema.
  */
@@ -350,4 +455,5 @@ const generateSplScrapFilename = (prefix, date = new Date()) => {
 
 module.exports = {
   processFileForConversion,
+  processManualDataForConversion,
 };
