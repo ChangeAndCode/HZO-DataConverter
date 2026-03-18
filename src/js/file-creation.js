@@ -75,7 +75,7 @@ const billOfMaterialsColumns = [
 const splScrapMetaFields = [
   {
     key: 'Customer(southbound) / Ship to (northbound)',
-    label: 'Ship to',
+    label: 'Customer / Ship to',
     required: true,
   },
   {
@@ -94,7 +94,10 @@ const splScrapMetaFields = [
     key: 'Expected date of arrival',
     label: 'Expected date of arrival',
     required: true,
-    inputType: 'date',
+    inputType: 'text',
+    placeholder: "YYYY/MM/DD",
+    pattern:" \\d{4}/\\d{2}/\\d{2}",
+    title: "Fecha en formato YYYY/MM/DD"
   },
   { key: 'Waybill number', label: 'Waybill number' },
   { key: 'Total gross weight', label: 'Total gross weight' },
