@@ -63,6 +63,15 @@ const rawMaterialColumns = [
   { key: 'usml', label: 'USML (ITAR)' },
 ];
 
+const billOfMaterialsColumns = [
+  { key: 'finishedGoodPartNumber', label: 'Finished Good Part Number', maxLength: 30, required: true },
+  { key: 'componentPartNumber', label: 'Component Part Number', maxLength: 30, required: true },
+  { key: 'type', label: 'Type', maxLength: 1, required: true },
+  { key: 'quantity', label: 'Quantity', required: true },
+  { key: 'unitOfMeasure', label: 'Unit of Measure', maxLength: 3, required: true },
+  { key: 'componentClassification', label: 'Component classification', maxLength: 20 },
+];
+
 const fpTable = document.getElementById('fpTable');
 const fpHead = fpTable ? fpTable.querySelector('thead') : null;
 const fpBody = fpTable ? fpTable.querySelector('tbody') : null;
@@ -74,6 +83,12 @@ const rmHead = rmTable ? rmTable.querySelector('thead') : null;
 const rmBody = rmTable ? rmTable.querySelector('tbody') : null;
 const rmAddRowBtn = document.getElementById('rmAddRowBtn');
 let rmInitialized = false;
+
+const bmTable = document.getElementById('bmTable');
+const bmHead = bmTable ? bmTable.querySelector('thead') : null;
+const bmBody = bmTable ? bmTable.querySelector('tbody') : null;
+const bmAddRowBtn = document.getElementById('bmAddRowBtn');
+let bmInitialized = false;
 
 function buildFinishedProductTable() {
   if (!fpHead || !fpBody) return;
@@ -189,6 +204,63 @@ function addRawMaterialRow() {
   rmBody.appendChild(row);
 }
 
+function buildBillOfMaterialsTable() {
+  if (!bmHead || !bmBody) return;
+
+  bmHead.innerHTML = '';
+  const headerRow = document.createElement('tr');
+  billOfMaterialsColumns.forEach((col) => {
+    const th = document.createElement('th');
+    th.textContent = col.label;
+    headerRow.appendChild(th);
+  });
+  const actionsTh = document.createElement('th');
+  actionsTh.textContent = 'Acciones';
+  headerRow.appendChild(actionsTh);
+  bmHead.appendChild(headerRow);
+
+  bmBody.innerHTML = '';
+  addBillOfMaterialsRow();
+}
+
+function addBillOfMaterialsRow() {
+  if (!bmBody) return;
+  const row = document.createElement('tr');
+
+  billOfMaterialsColumns.forEach((col) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = `billOfMaterials[${col.key}][]`;
+    input.placeholder = col.label;
+    if (col.maxLength) input.maxLength = col.maxLength;
+    if (col.required) input.required = true;
+    if (col.key === 'finishedGoodPartNumber' || col.key === 'componentPartNumber') {
+      input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+      });
+    }
+    td.appendChild(input);
+    row.appendChild(td);
+  });
+
+  const actionsTd = document.createElement('td');
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove-btn';
+  removeBtn.textContent = 'Eliminar';
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    if (bmBody.children.length === 0) {
+      addBillOfMaterialsRow();
+    }
+  });
+  actionsTd.appendChild(removeBtn);
+  row.appendChild(actionsTd);
+
+  bmBody.appendChild(row);
+}
+
 function showFormat(type) {
   sections.forEach((s) => s.classList.add('hidden'));
   const id = map[type];
@@ -203,6 +275,10 @@ function showFormat(type) {
     buildRawMaterialTable();
     rmInitialized = true;
   }
+  if (type === 'billOfMaterials' && !bmInitialized) {
+    buildBillOfMaterialsTable();
+    bmInitialized = true;
+  }
 }
 
 if (fpAddRowBtn) {
@@ -211,6 +287,10 @@ if (fpAddRowBtn) {
 
 if (rmAddRowBtn) {
   rmAddRowBtn.addEventListener('click', addRawMaterialRow);
+}
+
+if (bmAddRowBtn) {
+  bmAddRowBtn.addEventListener('click', addBillOfMaterialsRow);
 }
 
 function renderErrorList(errors, title = 'Errores') {
@@ -322,6 +402,24 @@ function collectRawMaterialRows() {
   return rows;
 }
 
+function collectBillOfMaterialsRows() {
+  if (!bmBody) return [];
+  const rows = [];
+  bmBody.querySelectorAll('tr').forEach((tr) => {
+    const inputs = tr.querySelectorAll('input');
+    const row = {};
+    billOfMaterialsColumns.forEach((col, idx) => {
+      const val = inputs[idx] ? inputs[idx].value : '';
+      row[col.label] = val;
+    });
+    const hasValue = Object.values(row).some(
+      (v) => String(v).trim() !== ''
+    );
+    if (hasValue) rows.push(row);
+  });
+  return rows;
+}
+
 async function createManualFile(documentType, rows) {
   if (!rows.length) {
     renderErrorList([{ message: 'No hay filas con datos para crear.' }]);
@@ -385,6 +483,10 @@ if (createFileButton) {
     }
     if (fileType.value === 'rawMaterial') {
       createManualFile('rawMaterial', collectRawMaterialRows());
+      return;
+    }
+    if (fileType.value === 'billOfMaterials') {
+      createManualFile('billOfMaterials', collectBillOfMaterialsRows());
       return;
     }
     renderErrorList([{ message: 'Este tipo a\u00fan no est\u00e1 disponible.' }]);

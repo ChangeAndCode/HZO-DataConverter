@@ -49,9 +49,15 @@
     </div>
 
     <div id="format-billOfMaterials" class="format-section hidden">
-      <input type="text" placeholder="partNumber">
-      <input type="text" placeholder="partNumber">
-      <input type="text" placeholder="partNumber">
+      <div class="table-actions">
+        <button type="button" id="bmAddRowBtn">Agregar fila</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="bmTable" class="data-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
     <div id="format-splScrap" class="format-section hidden">
