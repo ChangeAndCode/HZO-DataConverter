@@ -72,6 +72,60 @@ const billOfMaterialsColumns = [
   { key: 'componentClassification', label: 'Component classification', maxLength: 20 },
 ];
 
+const splScrapMetaFields = [
+  {
+    key: 'Customer(southbound) / Ship to (northbound)',
+    label: 'Ship to',
+    required: true,
+  },
+  {
+    key: 'Type of goods',
+    label: 'Type of goods',
+    required: true,
+    options: ['FG', 'RM', 'EQ'],
+  },
+  {
+    key: 'Type of shipment',
+    label: 'Type of shipment',
+    required: true,
+    options: ['Northbound', 'Southbound', 'Scrap'],
+  },
+  {
+    key: 'Expected date of arrival',
+    label: 'Expected date of arrival',
+    required: true,
+    inputType: 'date',
+  },
+  { key: 'Waybill number', label: 'Waybill number' },
+  { key: 'Total gross weight', label: 'Total gross weight' },
+  { key: 'Total bundles', label: 'Total bundles' },
+];
+
+const splScrapColumns = [
+  { key: 'partNumber', label: 'Part Number', maxLength: 30, required: true },
+  { key: 'description', label: 'Description', maxLength: 60, required: true },
+  { key: 'quantity', label: 'Quantity', required: true },
+  { key: 'unitOfMeasure', label: 'Unit Of Measure', maxLength: 3, required: true },
+  { key: 'unitValueUsd', label: 'Unit Value (USD)', required: true },
+  { key: 'addedValueUsd', label: 'Added Value (USD)', required: true },
+  { key: 'totalValueUsd', label: 'Total Value (USD)', required: true },
+  { key: 'unitNetWeight', label: 'Unit Net Weight', required: true },
+  { key: 'countryOfOrigin', label: 'Country of Origin', maxLength: 2, required: true },
+  { key: 'eccn', label: 'ECCN', required: true },
+  { key: 'licenseNo', label: 'License No.' },
+  { key: 'licenseException', label: 'License Exception' },
+  { key: 'usImpHts', label: 'US IMP HTS Code', required: true },
+  { key: 'usExpHts', label: 'US EXP HTS Code', required: true },
+  { key: 'regime', label: 'Regime' },
+  { key: 'brand', label: 'Brand' },
+  { key: 'model', label: 'Model' },
+  { key: 'serial', label: 'Serial' },
+  { key: 'powerSourceType', label: 'Power Source Type' },
+  { key: 'capacity', label: 'Capacity' },
+  { key: 'mainFunction', label: 'Main Function' },
+  { key: 'poNumber', label: 'PO Number' },
+];
+
 const fpTable = document.getElementById('fpTable');
 const fpHead = fpTable ? fpTable.querySelector('thead') : null;
 const fpBody = fpTable ? fpTable.querySelector('tbody') : null;
@@ -89,6 +143,14 @@ const bmHead = bmTable ? bmTable.querySelector('thead') : null;
 const bmBody = bmTable ? bmTable.querySelector('tbody') : null;
 const bmAddRowBtn = document.getElementById('bmAddRowBtn');
 let bmInitialized = false;
+
+const splTable = document.getElementById('splTable');
+const splHead = splTable ? splTable.querySelector('thead') : null;
+const splBody = splTable ? splTable.querySelector('tbody') : null;
+const splAddRowBtn = document.getElementById('splAddRowBtn');
+const splMetaContainer = document.getElementById('splMetaFields');
+const splMetaInputs = {};
+let splInitialized = false;
 
 function buildFinishedProductTable() {
   if (!fpHead || !fpBody) return;
@@ -261,6 +323,105 @@ function addBillOfMaterialsRow() {
   bmBody.appendChild(row);
 }
 
+function buildSplScrapMetaFields() {
+  if (!splMetaContainer) return;
+  splMetaContainer.innerHTML = '';
+
+  splScrapMetaFields.forEach((field, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'meta-field';
+
+    const label = document.createElement('label');
+    const inputId = `splMeta_${idx}`;
+    label.setAttribute('for', inputId);
+    label.textContent = field.label;
+
+    let input;
+    if (Array.isArray(field.options)) {
+      input = document.createElement('select');
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '-- Seleccione --';
+      input.appendChild(emptyOpt);
+      field.options.forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = field.inputType || 'text';
+      input.placeholder = field.label;
+    }
+
+    input.id = inputId;
+    if (field.required) input.required = true;
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    splMetaContainer.appendChild(wrapper);
+    splMetaInputs[field.key] = input;
+  });
+}
+
+function buildSplScrapTable() {
+  if (!splHead || !splBody) return;
+
+  splHead.innerHTML = '';
+  const headerRow = document.createElement('tr');
+  splScrapColumns.forEach((col) => {
+    const th = document.createElement('th');
+    th.textContent = col.label;
+    headerRow.appendChild(th);
+  });
+  const actionsTh = document.createElement('th');
+  actionsTh.textContent = 'Acciones';
+  headerRow.appendChild(actionsTh);
+  splHead.appendChild(headerRow);
+
+  splBody.innerHTML = '';
+  addSplScrapRow();
+}
+
+function addSplScrapRow() {
+  if (!splBody) return;
+  const row = document.createElement('tr');
+
+  splScrapColumns.forEach((col) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = `splScrap[${col.key}][]`;
+    input.placeholder = col.label;
+    if (col.maxLength) input.maxLength = col.maxLength;
+    if (col.required) input.required = true;
+    if (col.key === 'partNumber') {
+      input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+      });
+    }
+    td.appendChild(input);
+    row.appendChild(td);
+  });
+
+  const actionsTd = document.createElement('td');
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove-btn';
+  removeBtn.textContent = 'Eliminar';
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    if (splBody.children.length === 0) {
+      addSplScrapRow();
+    }
+  });
+  actionsTd.appendChild(removeBtn);
+  row.appendChild(actionsTd);
+
+  splBody.appendChild(row);
+}
+
 function showFormat(type) {
   sections.forEach((s) => s.classList.add('hidden'));
   const id = map[type];
@@ -279,6 +440,11 @@ function showFormat(type) {
     buildBillOfMaterialsTable();
     bmInitialized = true;
   }
+  if (type === 'splScrap' && !splInitialized) {
+    buildSplScrapMetaFields();
+    buildSplScrapTable();
+    splInitialized = true;
+  }
 }
 
 if (fpAddRowBtn) {
@@ -291,6 +457,10 @@ if (rmAddRowBtn) {
 
 if (bmAddRowBtn) {
   bmAddRowBtn.addEventListener('click', addBillOfMaterialsRow);
+}
+
+if (splAddRowBtn) {
+  splAddRowBtn.addEventListener('click', addSplScrapRow);
 }
 
 function renderErrorList(errors, title = 'Errores') {
@@ -420,6 +590,34 @@ function collectBillOfMaterialsRows() {
   return rows;
 }
 
+function collectSplScrapMeta() {
+  const meta = {};
+  splScrapMetaFields.forEach((field) => {
+    const input = splMetaInputs[field.key];
+    meta[field.key] = input ? input.value : '';
+  });
+  return meta;
+}
+
+function collectSplScrapRows() {
+  if (!splBody) return [];
+  const meta = collectSplScrapMeta();
+  const rows = [];
+  splBody.querySelectorAll('tr').forEach((tr) => {
+    const inputs = tr.querySelectorAll('input');
+    const row = {};
+    splScrapColumns.forEach((col, idx) => {
+      const val = inputs[idx] ? inputs[idx].value : '';
+      row[col.label] = val;
+    });
+    const hasValue = Object.values(row).some(
+      (v) => String(v).trim() !== ''
+    );
+    if (hasValue) rows.push({ ...meta, ...row });
+  });
+  return rows;
+}
+
 async function createManualFile(documentType, rows) {
   if (!rows.length) {
     renderErrorList([{ message: 'No hay filas con datos para crear.' }]);
@@ -487,6 +685,10 @@ if (createFileButton) {
     }
     if (fileType.value === 'billOfMaterials') {
       createManualFile('billOfMaterials', collectBillOfMaterialsRows());
+      return;
+    }
+    if (fileType.value === 'splScrap') {
+      createManualFile('splScrap', collectSplScrapRows());
       return;
     }
     renderErrorList([{ message: 'Este tipo a\u00fan no est\u00e1 disponible.' }]);

@@ -61,9 +61,19 @@
     </div>
 
     <div id="format-splScrap" class="format-section hidden">
-      <input type="text" placeholder="partNumber">
-      <input type="text" placeholder="partNumber">
-      <input type="text" placeholder="partNumber">
+      <h2>Datos del Embarque</h2>
+      <div id="splMetaFields" class="meta-grid"></div>
+
+      <h2>Partidas</h2>
+      <div class="table-actions">
+        <button type="button" id="splAddRowBtn">Agregar fila</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="splTable" class="data-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
     <button id="createFileButton">
