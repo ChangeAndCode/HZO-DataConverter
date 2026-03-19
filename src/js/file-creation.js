@@ -95,9 +95,9 @@ const splScrapMetaFields = [
     label: 'Expected date of arrival',
     required: true,
     inputType: 'text',
-    placeholder: "YYYY/MM/DD",
-    pattern:" \\d{4}/\\d{2}/\\d{2}",
-    title: "Fecha en formato YYYY/MM/DD"
+    placeholder: 'YYYY-MM-DD',
+    pattern: '\\d{4}-\\d{2}-\\d{2}',
+    title: 'Fecha en formato YYYY-MM-DD',
   },
   { key: 'Waybill number', label: 'Waybill number' },
   { key: 'Total gross weight', label: 'Total gross weight' },
@@ -326,6 +326,17 @@ function addBillOfMaterialsRow() {
   bmBody.appendChild(row);
 }
 
+function formatYmd(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+  const y = digits.slice(0, 4);
+  const m = digits.slice(4, 6);
+  const d = digits.slice(6, 8);
+  let out = y;
+  if (m) out += `-${m}`;
+  if (d) out += `-${d}`;
+  return out;
+}
+
 function buildSplScrapMetaFields() {
   if (!splMetaContainer) return;
   splMetaContainer.innerHTML = '';
@@ -360,6 +371,15 @@ function buildSplScrapMetaFields() {
 
     input.id = inputId;
     if (field.required) input.required = true;
+    if (field.placeholder) input.placeholder = field.placeholder;
+    if (field.pattern) input.setAttribute('pattern', field.pattern);
+    if (field.title) input.title = field.title;
+    if (field.key === 'Expected date of arrival') {
+      input.maxLength = 10;
+      input.addEventListener('input', (e) => {
+        e.target.value = formatYmd(e.target.value);
+      });
+    }
 
     wrapper.appendChild(label);
     wrapper.appendChild(input);
