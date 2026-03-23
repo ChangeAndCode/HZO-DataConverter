@@ -102,6 +102,7 @@ const splScrapMetaFields = [
   { key: 'Waybill number', label: 'Waybill number' },
   { key: 'Total gross weight', label: 'Total gross weight' },
   { key: 'Total bundles', label: 'Total bundles' },
+  { key: 'regime', label: 'Regime', required: false },
 ];
 
 const splScrapColumns = [
@@ -119,7 +120,6 @@ const splScrapColumns = [
   { key: 'licenseException', label: 'License Exception' },
   { key: 'usImpHts', label: 'US IMP HTS Code', required: true },
   { key: 'usExpHts', label: 'US EXP HTS Code', required: true },
-  { key: 'regime', label: 'Regime' },
   { key: 'brand', label: 'Brand' },
   { key: 'model', label: 'Model' },
   { key: 'serial', label: 'Serial' },
@@ -171,7 +171,10 @@ function buildFinishedProductTable() {
   fpHead.appendChild(headerRow);
 
   fpBody.innerHTML = '';
-  addFinishedProductRow();
+  for (let i = 0; i < 5; i++) {
+    addFinishedProductRow();
+  }
+  updateTableScroll(fpBody);
 }
 
 function buildRawMaterialTable() {
@@ -190,7 +193,10 @@ function buildRawMaterialTable() {
   rmHead.appendChild(headerRow);
 
   rmBody.innerHTML = '';
-  addRawMaterialRow();
+  for (let i = 0; i < 5; i++) {
+    addRawMaterialRow();
+  }
+  updateTableScroll(rmBody);
 }
 
 function addFinishedProductRow() {
@@ -229,6 +235,20 @@ function addFinishedProductRow() {
   row.appendChild(actionsTd);
 
   fpBody.appendChild(row);
+  updateTableScroll(fpBody);
+// Utilidad para scroll interno en tablas si hay más de 10 filas
+function updateTableScroll(tbody) {
+  if (!tbody) return;
+  const parent = tbody.parentElement;
+  if (!parent) return;
+  if (tbody.children.length > 10) {
+    parent.style.maxHeight = '350px';
+    parent.style.overflowY = 'auto';
+  } else {
+    parent.style.maxHeight = '';
+    parent.style.overflowY = '';
+  }
+}
 }
 
 function addRawMaterialRow() {
@@ -267,6 +287,7 @@ function addRawMaterialRow() {
   row.appendChild(actionsTd);
 
   rmBody.appendChild(row);
+  updateTableScroll(rmBody);
 }
 
 function buildBillOfMaterialsTable() {
@@ -285,7 +306,10 @@ function buildBillOfMaterialsTable() {
   bmHead.appendChild(headerRow);
 
   bmBody.innerHTML = '';
-  addBillOfMaterialsRow();
+  for (let i = 0; i < 5; i++) {
+    addBillOfMaterialsRow();
+  }
+  updateTableScroll(bmBody);
 }
 
 function addBillOfMaterialsRow() {
@@ -324,6 +348,7 @@ function addBillOfMaterialsRow() {
   row.appendChild(actionsTd);
 
   bmBody.appendChild(row);
+  updateTableScroll(bmBody);
 }
 
 function formatYmd(value) {
@@ -404,7 +429,10 @@ function buildSplScrapTable() {
   splHead.appendChild(headerRow);
 
   splBody.innerHTML = '';
-  addSplScrapRow();
+  for (let i = 0; i < 5; i++) {
+    addSplScrapRow();
+  }
+  updateTableScroll(splBody);
 }
 
 function addSplScrapRow() {
@@ -443,6 +471,7 @@ function addSplScrapRow() {
   row.appendChild(actionsTd);
 
   splBody.appendChild(row);
+  updateTableScroll(splBody);
 }
 
 function showFormat(type) {
