@@ -262,6 +262,16 @@ h2 {
   width: 100%;
   overflow-x: auto;
 }
+.admin-files-panel {
+  width: 100%;
+  margin-top: 20px;
+  text-align: left;
+}
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .data-table {
   width: 100%;
   border-collapse: collapse;

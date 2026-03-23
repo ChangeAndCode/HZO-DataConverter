@@ -23,9 +23,35 @@
         <option value="splScrap">SLPSCRAP (PACKING LIST)</option>
       </select>
     </div>
+
+    <div id="adminFilesPanel" class="admin-files-panel">
+      <h2>Archivos</h2>
+      <div class="table-wrapper">
+        <table id="adminFilesTable" class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Ultima actualizacion</th>
+              <th>Por Usuario</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <a id="dashboardButton" class="button" href="/auth/dashboard">
+      <span class="btn-text">Volver al Dashboard</span>
+    </a>
+    <a id="createFilesButton" class="button" href="/file-creation">
+      <span class="btn-text">Crear Archivos</span>
+    </a>
+    
   </div>
-  <script type="module" src="../js/file-creation.js"></script>
+  <script type="module" src="../js/file-admin.js"></script>
 </body>
 
 </html>
+
 
