@@ -291,6 +291,66 @@ function addFinishedProductRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      const allInputs = Array.from(fpBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(fpBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < fpBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            fpBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === fpBody.children.length - 1) {
+          addFinishedProductRow();
+          setTimeout(() => {
+            const newRowInputs = Array.from(
+              fpBody.children[fpBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
+          }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            fpBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < fpBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            fpBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            fpBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -344,6 +404,66 @@ function addRawMaterialRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      const allInputs = Array.from(rmBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(rmBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < rmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            rmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === rmBody.children.length - 1) {
+          addRawMaterialRow();
+          setTimeout(() => {
+            const newRowInputs = Array.from(
+              rmBody.children[rmBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
+          }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            rmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < rmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            rmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            rmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -408,6 +528,66 @@ function addBillOfMaterialsRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      const allInputs = Array.from(bmBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(bmBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < bmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            bmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === bmBody.children.length - 1) {
+          addBillOfMaterialsRow();
+          setTimeout(() => {
+            const newRowInputs = Array.from(
+              bmBody.children[bmBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
+          }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            bmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < bmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            bmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            bmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -533,6 +713,66 @@ function addSplScrapRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      const allInputs = Array.from(splBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(splBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < splBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            splBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === splBody.children.length - 1) {
+          addSplScrapRow();
+          setTimeout(() => {
+            const newRowInputs = Array.from(
+              splBody.children[splBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
+          }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            splBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < splBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            splBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            splBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
