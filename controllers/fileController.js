@@ -207,18 +207,34 @@ const getConvertedFile = async (req, res) => {
         .json({ message: "Archivo convertido no encontrado en el servidor." });
     }
 
-    res.download(
-      job.convertedFilePath,
-      path.basename(job.convertedFilePath),
-      (err) => {
-        if (err) {
-          console.error("Error al enviar el archivo para descarga:", err);
-          if (!res.headersSent) {
-            res.status(500).json({ message: "Error al descargar el archivo." });
-          }
+    const downloadName = path.basename(job.convertedFilePath);
+
+    // If this job corresponds to a finishedProduct file, store last download name
+    try {
+      if (
+        job.conversionOptions &&
+        job.conversionOptions.documentType === "finishedProduct"
+      ) {
+        await FinishedProduct.updateOne(
+          { sourceJobId: job._id },
+          { $set: { lastDownloadedName: downloadName } }
+        );
+      }
+    } catch (updateError) {
+      console.warn(
+        "No se pudo actualizar lastDownloadedName:",
+        updateError.message
+      );
+    }
+
+    res.download(job.convertedFilePath, downloadName, (err) => {
+      if (err) {
+        console.error("Error al enviar el archivo para descarga:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Error al descargar el archivo." });
         }
       }
-    );
+    });
   } catch (error) {
     console.error("Error al obtener archivo convertido:", error);
     res.status(500).json({ message: "Error interno del servidor." });
@@ -440,7 +456,7 @@ const getAdminFilesByType = async (req, res) => {
     const docs = await FinishedProduct.find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(limit)
-      .select("adminFileName createdBy createdAt updatedAt")
+      .select("adminFileName lastDownloadedName createdBy createdAt updatedAt")
       .lean();
 
     return res.status(200).json({ documents: docs });
@@ -452,6 +468,77 @@ const getAdminFilesByType = async (req, res) => {
   }
 };
 
+const downloadAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+
+  if (!id) {
+    return res.status(400).json({ message: "id es requerido." });
+  }
+  if (type !== "finishedProduct") {
+    return res
+      .status(400)
+      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  }
+
+  try {
+    const doc = await FinishedProduct.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: "Archivo no encontrado." });
+    }
+
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
+      return res.status(403).json({ message: "Acceso denegado." });
+    }
+
+    const rowsToExport = Array.isArray(doc.rows) ? doc.rows : [];
+    if (!rowsToExport.length) {
+      return res
+        .status(409)
+        .json({ message: "No hay filas para exportar." });
+    }
+
+    const {
+      convertedFilePath,
+      status,
+      outputFileName,
+    } = await fileConversionService.processManualDataForConversion(
+      rowsToExport,
+      null,
+      { documentType: "finishedProduct" }
+    );
+
+    if (status !== "completed" || !convertedFilePath) {
+      return res.status(409).json({
+        message: "No se pudo generar el archivo para descarga.",
+      });
+    }
+
+    const nomenclature =
+      typeof outputFileName === "string" && outputFileName
+        ? outputFileName
+        : "finishedProduct.txt";
+
+    doc.lastDownloadedName = nomenclature;
+    await doc.save();
+
+    return res.download(convertedFilePath, nomenclature, (err) => {
+      if (err) {
+        console.error("Error al enviar el archivo:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Error al descargar el archivo." });
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error al descargar archivo admin:", error);
+    return res
+      .status(500)
+      .json({ message: "Error interno al descargar el archivo." });
+  }
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
@@ -460,4 +547,5 @@ module.exports = {
   validateManualData,
   createManualFile,
   getAdminFilesByType,
+  downloadAdminFileById,
 };

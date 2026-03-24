@@ -38,7 +38,7 @@
     tableBody.innerHTML = "";
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 5;
     cell.className = "no-jobs";
     cell.textContent = message;
     row.appendChild(cell);
@@ -112,6 +112,9 @@
       const nameCell = document.createElement("td");
       nameCell.textContent = getAdminDocName(doc);
 
+      const nomenclatureCell = document.createElement("td");
+      nomenclatureCell.textContent = doc.lastDownloadedName || "-";
+
       const updatedCell = document.createElement("td");
       updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
 
@@ -123,6 +126,14 @@
       const actionsCell = document.createElement("td");
       const actionsWrap = document.createElement("div");
       actionsWrap.className = "admin-actions";
+
+      const downloadBtn = document.createElement("button");
+      downloadBtn.type = "button";
+      downloadBtn.className = "download-btn";
+      downloadBtn.textContent = "Descargar";
+      downloadBtn.addEventListener("click", () => {
+        window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
+      });
 
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
@@ -139,11 +150,13 @@
         console.log("Borrar no implementado", doc);
       });
 
+      actionsWrap.appendChild(downloadBtn);
       actionsWrap.appendChild(updateBtn);
       actionsWrap.appendChild(deleteBtn);
       actionsCell.appendChild(actionsWrap);
 
       row.appendChild(nameCell);
+      row.appendChild(nomenclatureCell);
       row.appendChild(updatedCell);
       row.appendChild(userCell);
       row.appendChild(actionsCell);
