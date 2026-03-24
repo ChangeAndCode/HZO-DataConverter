@@ -13,6 +13,7 @@ const {
   applyBusinessValidations,
 } = require("../utils/validationUtils");
 const { applyTransformations } = require("../utils/transformationUtils");
+const FinishedProduct = require("../models/FinishedProduct");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -206,18 +207,34 @@ const getConvertedFile = async (req, res) => {
         .json({ message: "Archivo convertido no encontrado en el servidor." });
     }
 
-    res.download(
-      job.convertedFilePath,
-      path.basename(job.convertedFilePath),
-      (err) => {
-        if (err) {
-          console.error("Error al enviar el archivo para descarga:", err);
-          if (!res.headersSent) {
-            res.status(500).json({ message: "Error al descargar el archivo." });
-          }
+    const downloadName = path.basename(job.convertedFilePath);
+
+    // If this job corresponds to a finishedProduct file, store last download name
+    try {
+      if (
+        job.conversionOptions &&
+        job.conversionOptions.documentType === "finishedProduct"
+      ) {
+        await FinishedProduct.updateOne(
+          { sourceJobId: job._id },
+          { $set: { lastDownloadedName: downloadName } }
+        );
+      }
+    } catch (updateError) {
+      console.warn(
+        "No se pudo actualizar lastDownloadedName:",
+        updateError.message
+      );
+    }
+
+    res.download(job.convertedFilePath, downloadName, (err) => {
+      if (err) {
+        console.error("Error al enviar el archivo para descarga:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Error al descargar el archivo." });
         }
       }
-    );
+    });
   } catch (error) {
     console.error("Error al obtener archivo convertido:", error);
     res.status(500).json({ message: "Error interno del servidor." });
@@ -300,7 +317,9 @@ const validateManualData = async (req, res) => {
 };
 
 const createManualFile = async (req, res) => {
-  const { documentType, rows, outputFormat } = req.body || {};
+  const { documentType, rows, outputFormat, displayName } = req.body || {};
+  const normalizedName =
+    typeof displayName === "string" ? displayName.trim() : "";
 
   if (!documentType) {
     return res.status(400).json({ message: "documentType es requerido." });
@@ -337,17 +356,53 @@ const createManualFile = async (req, res) => {
       fileName: `manual-${documentType}.${finalOutputFormat}`,
       originalFilePath: `manual-${documentType}`,
       outputFormat: finalOutputFormat,
-      conversionOptions: { documentType },
+      conversionOptions: {
+        documentType,
+        displayName: normalizedName || undefined,
+      },
       status: "processing",
       isAutomated: false,
     });
 
-    const { convertedFilePath, errorReportPath, status, errors } =
+    const {
+      convertedFilePath,
+      errorReportPath,
+      status,
+      errors,
+      transformedRows,
+      outputFileName,
+    } =
       await fileConversionService.processManualDataForConversion(
         rows,
         finalOutputFormat,
         { documentType }
       );
+
+    let savedCount = 0;
+    let savedDb = "";
+    let savedCollection = "";
+    if (documentType === "finishedProduct" && status === "completed") {
+      const rowsToSave = Array.isArray(transformedRows) ? transformedRows : [];
+      if (rowsToSave.length > 0) {
+        const adminFileName =
+          normalizedName ||
+          (typeof outputFileName === "string" ? outputFileName : "");
+
+        const savedDoc = await FinishedProduct.create({
+          adminFileName: adminFileName || undefined,
+          createdBy: req.user.id,
+          sourceJobId: newJob._id,
+          rows: rowsToSave,
+        });
+
+        savedCount = savedDoc ? 1 : 0;
+        savedDb = FinishedProduct.db.name;
+        savedCollection = FinishedProduct.collection.name;
+        console.log(
+          `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+        );
+      }
+    }
 
     await conversionJobRepository.updateConversionJobStatus(newJob._id, status, {
       convertedFilePath,
@@ -361,6 +416,9 @@ const createManualFile = async (req, res) => {
       documentType,
       status,
       errors: errors || [],
+      savedCount,
+      savedDb,
+      savedCollection,
     });
   } catch (error) {
     console.error("Error al procesar datos manuales:", error);
@@ -378,6 +436,109 @@ const createManualFile = async (req, res) => {
   }
 };
 
+const getAdminFilesByType = async (req, res) => {
+  const { type } = req.query || {};
+  if (!type) {
+    return res.status(400).json({ message: "type es requerido." });
+  }
+
+  if (type !== "finishedProduct") {
+    return res.status(400).json({
+      message: "Solo finishedProduct esta habilitado por ahora.",
+    });
+  }
+
+  try {
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    const query = isAdmin ? {} : { createdBy: req.user.id };
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+
+    const docs = await FinishedProduct.find(query)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .select("adminFileName lastDownloadedName createdBy createdAt updatedAt")
+      .lean();
+
+    return res.status(200).json({ documents: docs });
+  } catch (error) {
+    console.error("Error al listar archivos admin:", error);
+    return res.status(500).json({
+      message: "Error interno del servidor al listar archivos.",
+    });
+  }
+};
+
+const downloadAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+
+  if (!id) {
+    return res.status(400).json({ message: "id es requerido." });
+  }
+  if (type !== "finishedProduct") {
+    return res
+      .status(400)
+      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  }
+
+  try {
+    const doc = await FinishedProduct.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: "Archivo no encontrado." });
+    }
+
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
+      return res.status(403).json({ message: "Acceso denegado." });
+    }
+
+    const rowsToExport = Array.isArray(doc.rows) ? doc.rows : [];
+    if (!rowsToExport.length) {
+      return res
+        .status(409)
+        .json({ message: "No hay filas para exportar." });
+    }
+
+    const {
+      convertedFilePath,
+      status,
+      outputFileName,
+    } = await fileConversionService.processManualDataForConversion(
+      rowsToExport,
+      null,
+      { documentType: "finishedProduct" }
+    );
+
+    if (status !== "completed" || !convertedFilePath) {
+      return res.status(409).json({
+        message: "No se pudo generar el archivo para descarga.",
+      });
+    }
+
+    const nomenclature =
+      typeof outputFileName === "string" && outputFileName
+        ? outputFileName
+        : "finishedProduct.txt";
+
+    doc.lastDownloadedName = nomenclature;
+    await doc.save();
+
+    return res.download(convertedFilePath, nomenclature, (err) => {
+      if (err) {
+        console.error("Error al enviar el archivo:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Error al descargar el archivo." });
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error al descargar archivo admin:", error);
+    return res
+      .status(500)
+      .json({ message: "Error interno al descargar el archivo." });
+  }
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
@@ -385,4 +546,6 @@ module.exports = {
   getErrorReport,
   validateManualData,
   createManualFile,
+  getAdminFilesByType,
+  downloadAdminFileById,
 };

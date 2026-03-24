@@ -247,6 +247,7 @@ const processManualDataForConversion = async (
     status: hasErrors ? "completed_with_errors" : "completed",
     errors: errorReport,
     outputFileName,
+    transformedRows: transformedData.Sheet1,
   };
 };
 

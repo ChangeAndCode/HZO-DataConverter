@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administracion de Archivos</title>
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="stylesheet" href="../css/file-conversion.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>Administracion de Archivos</h1>
+
+    <div class="form-group">
+      <label for="adminFileType">Tipo de Archivo:</label>
+      <select id="adminFileType">
+        <option value="">-- Seleccione el tipo --</option>
+        <option value="rawMaterial">RAW MATERIAL</option>
+        <option value="billOfMaterials">BILL OF MATERIAL</option>
+        <option value="finishedProduct">FINISHED PRODUCT</option>
+        <option value="splScrap">SLPSCRAP (PACKING LIST)</option>
+      </select>
+    </div>
+
+    <div id="adminFilesPanel" class="admin-files-panel">
+      <h2>Archivos</h2>
+      <div class="table-wrapper">
+        <table id="adminFilesTable" class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Nomenclatura</th>
+              <th>Ultima actualizacion</th>
+              <th>Por Usuario</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <a id="dashboardButton" class="button" href="/auth/dashboard">
+      <span class="btn-text">Volver al Dashboard</span>
+    </a>
+    <a id="createFilesButton" class="button" href="/file-creation">
+      <span class="btn-text">Crear Archivos</span>
+    </a>
+    
+  </div>
+  <script type="module" src="../js/file-admin.js"></script>
+</body>
+
+</html>
+
+
