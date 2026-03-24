@@ -54,7 +54,7 @@ async function ensureUniqueRemotePath(sftp, remotePath) {
     while (true) {
       const candidate = path.posix.join(
         dir,
-        `${name}_v${String(i).padStart(2, "0")}${ext}`
+        `${name}_v${String(i).padStart(2, "0")}${ext}`,
       );
       if (!(await safeExists(sftp, candidate))) return candidate;
       i += 1;
@@ -98,14 +98,14 @@ async function uploadFilesViaSftp(files) {
 
   try {
     console.log(
-      `[SFTP Service] Connecting to SFTP server: ${sftpConfig.host}:${sftpConfig.port}...`
+      `[SFTP Service] Connecting to SFTP server: ${sftpConfig.host}:${sftpConfig.port}...`,
     );
 
     // Manejo de errores del cliente (antes de conectar)
     sftp.on("error", (err) => {
       if (allPutsCompleted && isTransientEndError(err)) {
         console.warn(
-          `[SFTP Service] Transient SFTP error post-transfer (ignorado): ${err.message}`
+          `[SFTP Service] Transient SFTP error post-transfer (ignorado): ${err.message}`,
         );
       } else {
         console.error(`[SFTP Service] SFTP client error:`, err);
@@ -115,7 +115,7 @@ async function uploadFilesViaSftp(files) {
     sftp.on("close", (hadErr) => {
       if (hadErr && allPutsCompleted) {
         console.warn(
-          `[SFTP Service] SFTP closed with error post-transfer (ignorado).`
+          `[SFTP Service] SFTP closed with error post-transfer (ignorado).`,
         );
       }
     });
@@ -130,7 +130,7 @@ async function uploadFilesViaSftp(files) {
     await sftp.connect(sftpConfig);
     connectDone = true;
     console.log(
-      `[SFTP Service] Connected. Uploading ${files.length} file(s)...`
+      `[SFTP Service] Connected. Uploading ${files.length} file(s)...`,
     );
 
     for (const f of files) {
@@ -145,7 +145,7 @@ async function uploadFilesViaSftp(files) {
 
       if (finalRemote !== remote) {
         console.log(
-          `[SFTP Service] Remote exists. Using unique name: ${finalRemote}`
+          `[SFTP Service] Remote exists. Using unique name: ${finalRemote}`,
         );
       }
 
@@ -167,7 +167,7 @@ async function uploadFilesViaSftp(files) {
       } catch (e) {
         if (allPutsCompleted && isTransientEndError(e)) {
           console.warn(
-            `[SFTP Service] Ignoring end() error post-transfer: ${e.message}`
+            `[SFTP Service] Ignoring end() error post-transfer: ${e.message}`,
           );
         } else {
           // si falló antes de terminar puts o es otro error, sí propagamos
@@ -194,7 +194,7 @@ async function deleteRemoteFile(remotePath) {
     const exists = await safeExists(sftp, remotePath);
     if (!exists) {
       console.log(
-        `[SFTP Service] deleteRemoteFile: ${remotePath} no existe, nada que borrar.`
+        `[SFTP Service] deleteRemoteFile: ${remotePath} no existe, nada que borrar.`,
       );
       return false;
     }
@@ -204,7 +204,7 @@ async function deleteRemoteFile(remotePath) {
   } catch (err) {
     console.error(
       `[SFTP Service] deleteRemoteFile: error al borrar ${remotePath}:`,
-      err.message || err
+      err.message || err,
     );
     return false;
   } finally {

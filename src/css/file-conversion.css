@@ -1,22 +1,29 @@
 /* file-conversion.css */
 body {
-  background-color: #e6f7ff; /* Same as dashboard for consistency */
+  background-color: #e6f7ff;
+  /* Same as dashboard for consistency */
 }
+
 .container {
-  width: 800px; /* Increased width for better layout */
+  width: 800px;
+  /* Increased width for better layout */
   align-items: center;
-  padding: 20px 40px; /* Reduced top/bottom padding */
+  padding: 20px 40px;
+  /* Reduced top/bottom padding */
 }
+
 h1 {
   color: #007bff;
   margin-bottom: 20px;
   font-size: 2.2em;
 }
+
 .form-group {
   margin-bottom: 15px;
   text-align: left;
   width: 100%;
 }
+
 .form-group label {
   display: block;
   margin-bottom: 10px;
@@ -24,6 +31,7 @@ h1 {
   color: #333;
   font-size: 1.05em;
 }
+
 /* The default input styling from main.css will now correctly apply */
 .form-group input[type='file'],
 .form-group select {
@@ -40,6 +48,7 @@ h1 {
   position: relative;
   min-width: 180px;
 }
+
 .spinner {
   border: 3px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
@@ -50,10 +59,12 @@ h1 {
   display: inline-block;
   vertical-align: middle;
 }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -67,36 +78,43 @@ h1 {
   text-align: left;
   border: 1px solid transparent;
 }
+
 .conversion-result.success {
   background-color: #eafdeb;
   border-color: #c3e6cb;
   color: #28a745;
 }
+
 .conversion-result.warning {
   background-color: #fff8e1;
   border-color: #ffecb3;
   color: #f57c00;
 }
+
 /* NEW: Style for critical API errors (4xx, 5xx, network) */
 .conversion-result.error {
   background-color: #f8d7da;
   border-color: #f5c6cb;
   color: #721c24;
 }
+
 .conversion-result h4 {
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 1.2em;
 }
+
 .conversion-result p {
   margin-bottom: 15px;
 }
+
 .result-actions a {
   margin-right: 15px;
   color: #007bff;
   text-decoration: none;
   font-weight: bold;
 }
+
 .result-actions a:hover {
   text-decoration: underline;
 }
@@ -107,12 +125,14 @@ h2 {
   color: #333;
   border-bottom: 1px solid #eee;
   padding-bottom: 10px;
-  width: 100%; /* Ensure h2 takes full width */
+  width: 100%;
+  /* Ensure h2 takes full width */
 }
 
 /* Contenedor del historial con scroll para 3 elementos */
 #conversionJobsList {
-  max-height: 450px; /* Muestra aproximadamente 3 elementos */
+  max-height: 450px;
+  /* Muestra aproximadamente 3 elementos */
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 5px;
@@ -138,7 +158,8 @@ h2 {
 }
 
 .conversion-job {
-  display: grid; /* Use Grid for better alignment */
+  display: grid;
+  /* Use Grid for better alignment */
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 15px;
   align-items: center;
@@ -151,15 +172,18 @@ h2 {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   transition: background-color 0.5s ease;
 }
+
 /* Highlight for new jobs */
 .conversion-job.new-job {
   background-color: #e6f7ff;
   border-color: #007bff;
 }
-.conversion-job > div {
+
+.conversion-job>div {
   text-align: left;
   word-break: break-word;
 }
+
 .conversion-job .job-label {
   font-weight: bold;
   display: block;
@@ -167,9 +191,11 @@ h2 {
   color: #555;
   font-size: 0.9em;
 }
+
 .conversion-job .status-badge {
   padding: 6px 12px;
-  border-radius: 16px; /* Pill shape */
+  border-radius: 16px;
+  /* Pill shape */
   font-weight: bold;
   color: white;
   text-align: center;
@@ -177,48 +203,62 @@ h2 {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: inline-block;
 }
+
 .conversion-job .status-processing {
   background-color: #ffc107;
 }
+
 .conversion-job .status-completed {
   background-color: #28a745;
 }
+
 .conversion-job .status-completed_with_errors {
-  background-color: #fd7e14; /* Orange-red for partial success */
+  background-color: #fd7e14;
+  /* Orange-red for partial success */
 }
+
 .conversion-job .status-failed {
   background-color: #dc3545;
 }
+
 .conversion-job .job-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  grid-column: 1 / -1; /* Make actions span full width */
+  grid-column: 1 / -1;
+  /* Make actions span full width */
   margin-top: 10px;
 }
+
 .conversion-job .job-actions button {
   padding: 8px 15px;
   font-size: 0.9em;
   border-radius: 6px;
 }
+
 .conversion-job .job-actions button.download-btn {
   background-color: #17a2b8;
 }
+
 .conversion-job .job-actions button.download-btn:hover {
   background-color: #138496;
 }
+
 .conversion-job .job-actions button.error-btn {
   background-color: #6c757d;
 }
+
 .conversion-job .job-actions button.error-btn:hover {
   background-color: #5a6268;
 }
+
 .no-jobs {
   color: #777;
   margin-top: 20px;
   text-align: center;
   font-style: italic;
 }
+
 .pagination-controls {
   display: flex;
   justify-content: center;
@@ -227,6 +267,7 @@ h2 {
   margin-bottom: 15px;
   gap: 15px;
 }
+
 .pagination-controls button {
   background-color: #6c757d;
   color: white;
@@ -236,14 +277,17 @@ h2 {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
+
 .pagination-controls button:hover:not(:disabled) {
   background-color: #5a6268;
 }
+
 .pagination-controls button:disabled {
   background-color: #c0c0c0;
   cursor: not-allowed;
   opacity: 0.7;
 }
+
 .pagination-controls #pageInfo {
   font-weight: 500;
   color: #333;
@@ -254,13 +298,17 @@ h2 {
 .format-section {
   width: 100%;
 }
+
 .table-actions {
   margin: 10px 0;
   text-align: left;
 }
+
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
+  max-height: 350px;
+  overflow-y: auto;
 }
 .admin-files-panel {
   width: 100%;
@@ -277,6 +325,7 @@ h2 {
   border-collapse: collapse;
   background-color: #fff;
 }
+
 .data-table th,
 .data-table td {
   border: 1px solid #e0e0e0;
@@ -285,10 +334,12 @@ h2 {
   text-align: left;
   vertical-align: top;
 }
+
 .data-table th {
   background-color: #f5f8fb;
   font-weight: 600;
 }
+
 .data-table input[type='text'] {
   width: 100px;
   margin: 0;
@@ -298,6 +349,7 @@ h2 {
   font-size: 0.9em;
   box-sizing: border-box;
 }
+
 .row-remove-btn {
   background-color: #dc3545;
   color: white;
@@ -306,6 +358,7 @@ h2 {
   border: none;
   cursor: pointer;
 }
+
 .row-remove-btn:hover {
   background-color: #c82333;
 }
@@ -318,6 +371,7 @@ h2 {
   width: 100%;
   margin-bottom: 10px;
 }
+
 .meta-field label {
   display: block;
   margin-bottom: 6px;
@@ -325,6 +379,7 @@ h2 {
   color: #333;
   font-size: 0.95em;
 }
+
 .meta-field input,
 .meta-field select {
   width: 100%;
@@ -334,4 +389,22 @@ h2 {
   font-size: 0.9em;
   background-color: #fff;
   box-sizing: border-box;
+}
+
+/* Scroll para tablas de creación de archivos */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #707070;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
 }
