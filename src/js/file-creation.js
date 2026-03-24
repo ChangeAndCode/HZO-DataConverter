@@ -293,25 +293,61 @@ function addFinishedProductRow() {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        if (!input.value.trim()) {
-          e.preventDefault();
-          input.focus();
-          return;
-        }
+      const allInputs = Array.from(fpBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(fpBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        const allInputs = Array.from(fpBody.querySelectorAll("input"));
-        const idx = allInputs.indexOf(input);
-        if (idx !== -1 && idx < allInputs.length - 1) {
-          allInputs[idx + 1].focus();
-        } else if (idx === allInputs.length - 1) {
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < fpBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            fpBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === fpBody.children.length - 1) {
           addFinishedProductRow();
           setTimeout(() => {
-            const newInputs = Array.from(fpBody.querySelectorAll("input"));
-            if (newInputs.length > allInputs.length) {
-              newInputs[allInputs.length].focus();
-            }
+            const newRowInputs = Array.from(
+              fpBody.children[fpBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
           }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            fpBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < fpBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            fpBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            fpBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
         }
       }
     });
@@ -370,25 +406,61 @@ function addRawMaterialRow() {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        if (!input.value.trim()) {
-          e.preventDefault();
-          input.focus();
-          return;
-        }
+      const allInputs = Array.from(rmBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(rmBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        const allInputs = Array.from(rmBody.querySelectorAll("input"));
-        const idx = allInputs.indexOf(input);
-        if (idx !== -1 && idx < allInputs.length - 1) {
-          allInputs[idx + 1].focus();
-        } else if (idx === allInputs.length - 1) {
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < rmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            rmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === rmBody.children.length - 1) {
           addRawMaterialRow();
           setTimeout(() => {
-            const newInputs = Array.from(rmBody.querySelectorAll("input"));
-            if (newInputs.length > allInputs.length) {
-              newInputs[allInputs.length].focus();
-            }
+            const newRowInputs = Array.from(
+              rmBody.children[rmBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
           }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            rmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < rmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            rmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            rmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
         }
       }
     });
@@ -458,25 +530,61 @@ function addBillOfMaterialsRow() {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        if (!input.value.trim()) {
-          e.preventDefault();
-          input.focus();
-          return;
-        }
+      const allInputs = Array.from(bmBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(bmBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        const allInputs = Array.from(bmBody.querySelectorAll("input"));
-        const idx = allInputs.indexOf(input);
-        if (idx !== -1 && idx < allInputs.length - 1) {
-          allInputs[idx + 1].focus();
-        } else if (idx === allInputs.length - 1) {
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < bmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            bmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === bmBody.children.length - 1) {
           addBillOfMaterialsRow();
           setTimeout(() => {
-            const newInputs = Array.from(bmBody.querySelectorAll("input"));
-            if (newInputs.length > allInputs.length) {
-              newInputs[allInputs.length].focus();
-            }
+            const newRowInputs = Array.from(
+              bmBody.children[bmBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
           }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            bmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < bmBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            bmBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            bmBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
         }
       }
     });
@@ -607,25 +715,61 @@ function addSplScrapRow() {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        if (!input.value.trim()) {
-          e.preventDefault();
-          input.focus();
-          return;
-        }
+      const allInputs = Array.from(splBody.querySelectorAll("input"));
+      const idx = allInputs.indexOf(input);
+      const rowInputs = Array.from(
+        input.closest("tr").querySelectorAll("input"),
+      );
+      const row = Array.from(splBody.querySelectorAll("tr")).indexOf(
+        input.closest("tr"),
+      );
+      const col = rowInputs.indexOf(input);
+      if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        const allInputs = Array.from(splBody.querySelectorAll("input"));
-        const idx = allInputs.indexOf(input);
-        if (idx !== -1 && idx < allInputs.length - 1) {
-          allInputs[idx + 1].focus();
-        } else if (idx === allInputs.length - 1) {
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
+        } else if (row < splBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            splBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        } else if (e.key === "Enter" && row === splBody.children.length - 1) {
           addSplScrapRow();
           setTimeout(() => {
-            const newInputs = Array.from(splBody.querySelectorAll("input"));
-            if (newInputs.length > allInputs.length) {
-              newInputs[allInputs.length].focus();
-            }
+            const newRowInputs = Array.from(
+              splBody.children[splBody.children.length - 1].querySelectorAll(
+                "input",
+              ),
+            );
+            if (newRowInputs[col]) newRowInputs[col].focus();
           }, 0);
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (col > 0) {
+          rowInputs[col - 1].focus();
+        } else if (row > 0) {
+          const prevRowInputs = Array.from(
+            splBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[prevRowInputs.length - 1])
+            prevRowInputs[prevRowInputs.length - 1].focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (row < splBody.children.length - 1) {
+          const nextRowInputs = Array.from(
+            splBody.children[row + 1].querySelectorAll("input"),
+          );
+          if (nextRowInputs[col]) nextRowInputs[col].focus();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (row > 0) {
+          const prevRowInputs = Array.from(
+            splBody.children[row - 1].querySelectorAll("input"),
+          );
+          if (prevRowInputs[col]) prevRowInputs[col].focus();
         }
       }
     });
