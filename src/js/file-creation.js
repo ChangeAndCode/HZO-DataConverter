@@ -291,6 +291,30 @@ function addFinishedProductRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        if (!input.value.trim()) {
+          e.preventDefault();
+          input.focus();
+          return;
+        }
+        e.preventDefault();
+        const allInputs = Array.from(fpBody.querySelectorAll("input"));
+        const idx = allInputs.indexOf(input);
+        if (idx !== -1 && idx < allInputs.length - 1) {
+          allInputs[idx + 1].focus();
+        } else if (idx === allInputs.length - 1) {
+          addFinishedProductRow();
+          setTimeout(() => {
+            const newInputs = Array.from(fpBody.querySelectorAll("input"));
+            if (newInputs.length > allInputs.length) {
+              newInputs[allInputs.length].focus();
+            }
+          }, 0);
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -344,6 +368,30 @@ function addRawMaterialRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        if (!input.value.trim()) {
+          e.preventDefault();
+          input.focus();
+          return;
+        }
+        e.preventDefault();
+        const allInputs = Array.from(rmBody.querySelectorAll("input"));
+        const idx = allInputs.indexOf(input);
+        if (idx !== -1 && idx < allInputs.length - 1) {
+          allInputs[idx + 1].focus();
+        } else if (idx === allInputs.length - 1) {
+          addRawMaterialRow();
+          setTimeout(() => {
+            const newInputs = Array.from(rmBody.querySelectorAll("input"));
+            if (newInputs.length > allInputs.length) {
+              newInputs[allInputs.length].focus();
+            }
+          }, 0);
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -408,6 +456,30 @@ function addBillOfMaterialsRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        if (!input.value.trim()) {
+          e.preventDefault();
+          input.focus();
+          return;
+        }
+        e.preventDefault();
+        const allInputs = Array.from(bmBody.querySelectorAll("input"));
+        const idx = allInputs.indexOf(input);
+        if (idx !== -1 && idx < allInputs.length - 1) {
+          allInputs[idx + 1].focus();
+        } else if (idx === allInputs.length - 1) {
+          addBillOfMaterialsRow();
+          setTimeout(() => {
+            const newInputs = Array.from(bmBody.querySelectorAll("input"));
+            if (newInputs.length > allInputs.length) {
+              newInputs[allInputs.length].focus();
+            }
+          }, 0);
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
@@ -533,6 +605,30 @@ function addSplScrapRow() {
         input.value = input.value.toUpperCase();
       });
     }
+    // Navegación por teclado con Enter
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        if (!input.value.trim()) {
+          e.preventDefault();
+          input.focus();
+          return;
+        }
+        e.preventDefault();
+        const allInputs = Array.from(splBody.querySelectorAll("input"));
+        const idx = allInputs.indexOf(input);
+        if (idx !== -1 && idx < allInputs.length - 1) {
+          allInputs[idx + 1].focus();
+        } else if (idx === allInputs.length - 1) {
+          addSplScrapRow();
+          setTimeout(() => {
+            const newInputs = Array.from(splBody.querySelectorAll("input"));
+            if (newInputs.length > allInputs.length) {
+              newInputs[allInputs.length].focus();
+            }
+          }, 0);
+        }
+      }
+    });
     td.appendChild(input);
     row.appendChild(td);
   });
