@@ -13,6 +13,7 @@ const {
   applyBusinessValidations,
 } = require("../utils/validationUtils");
 const { applyTransformations } = require("../utils/transformationUtils");
+const FinishedProduct = require("../models/FinishedProduct");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -300,7 +301,9 @@ const validateManualData = async (req, res) => {
 };
 
 const createManualFile = async (req, res) => {
-  const { documentType, rows, outputFormat } = req.body || {};
+  const { documentType, rows, outputFormat, displayName } = req.body || {};
+  const normalizedName =
+    typeof displayName === "string" ? displayName.trim() : "";
 
   if (!documentType) {
     return res.status(400).json({ message: "documentType es requerido." });
@@ -337,17 +340,53 @@ const createManualFile = async (req, res) => {
       fileName: `manual-${documentType}.${finalOutputFormat}`,
       originalFilePath: `manual-${documentType}`,
       outputFormat: finalOutputFormat,
-      conversionOptions: { documentType },
+      conversionOptions: {
+        documentType,
+        displayName: normalizedName || undefined,
+      },
       status: "processing",
       isAutomated: false,
     });
 
-    const { convertedFilePath, errorReportPath, status, errors } =
+    const {
+      convertedFilePath,
+      errorReportPath,
+      status,
+      errors,
+      transformedRows,
+      outputFileName,
+    } =
       await fileConversionService.processManualDataForConversion(
         rows,
         finalOutputFormat,
         { documentType }
       );
+
+    let savedCount = 0;
+    let savedDb = "";
+    let savedCollection = "";
+    if (documentType === "finishedProduct" && status === "completed") {
+      const rowsToSave = Array.isArray(transformedRows) ? transformedRows : [];
+      if (rowsToSave.length > 0) {
+        const adminFileName =
+          normalizedName ||
+          (typeof outputFileName === "string" ? outputFileName : "");
+
+        const savedDoc = await FinishedProduct.create({
+          adminFileName: adminFileName || undefined,
+          createdBy: req.user.id,
+          sourceJobId: newJob._id,
+          rows: rowsToSave,
+        });
+
+        savedCount = savedDoc ? 1 : 0;
+        savedDb = FinishedProduct.db.name;
+        savedCollection = FinishedProduct.collection.name;
+        console.log(
+          `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+        );
+      }
+    }
 
     await conversionJobRepository.updateConversionJobStatus(newJob._id, status, {
       convertedFilePath,
@@ -361,6 +400,9 @@ const createManualFile = async (req, res) => {
       documentType,
       status,
       errors: errors || [],
+      savedCount,
+      savedDb,
+      savedCollection,
     });
   } catch (error) {
     console.error("Error al procesar datos manuales:", error);
@@ -378,6 +420,38 @@ const createManualFile = async (req, res) => {
   }
 };
 
+const getAdminFilesByType = async (req, res) => {
+  const { type } = req.query || {};
+  if (!type) {
+    return res.status(400).json({ message: "type es requerido." });
+  }
+
+  if (type !== "finishedProduct") {
+    return res.status(400).json({
+      message: "Solo finishedProduct esta habilitado por ahora.",
+    });
+  }
+
+  try {
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    const query = isAdmin ? {} : { createdBy: req.user.id };
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+
+    const docs = await FinishedProduct.find(query)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .select("adminFileName createdBy createdAt updatedAt")
+      .lean();
+
+    return res.status(200).json({ documents: docs });
+  } catch (error) {
+    console.error("Error al listar archivos admin:", error);
+    return res.status(500).json({
+      message: "Error interno del servidor al listar archivos.",
+    });
+  }
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
@@ -385,4 +459,5 @@ module.exports = {
   getErrorReport,
   validateManualData,
   createManualFile,
+  getAdminFilesByType,
 };

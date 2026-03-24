@@ -2,6 +2,8 @@ const fileType = document.getElementById('fileType');
 const sections = document.querySelectorAll('.format-section');
 const createFileButton = document.getElementById('createFileButton');
 const validationResult = document.getElementById('validationResult');
+const adminFileNameGroup = document.getElementById('adminFileNameGroup');
+const adminFileNameInput = document.getElementById('adminFileName');
 
 const map = {
   finishedProduct: 'format-finishedProduct',
@@ -451,6 +453,14 @@ function showFormat(type) {
   if (id) {
     document.getElementById(id).classList.remove('hidden');
   }
+  if (adminFileNameGroup) {
+    if (type === 'finishedProduct') {
+      adminFileNameGroup.classList.remove('hidden');
+    } else {
+      adminFileNameGroup.classList.add('hidden');
+      if (adminFileNameInput) adminFileNameInput.value = '';
+    }
+  }
   if (type === 'finishedProduct' && !fpInitialized) {
     buildFinishedProductTable();
     fpInitialized = true;
@@ -641,7 +651,7 @@ function collectSplScrapRows() {
   return rows;
 }
 
-async function createManualFile(documentType, rows) {
+async function createManualFile(documentType, rows, displayName) {
   if (!rows.length) {
     renderErrorList([{ message: 'No hay filas con datos para crear.' }]);
     return;
@@ -660,6 +670,7 @@ async function createManualFile(documentType, rows) {
       body: JSON.stringify({
         documentType,
         rows,
+        displayName: displayName || undefined,
       }),
     });
     const data = await response.json();
@@ -699,19 +710,23 @@ if (createFileButton) {
       return;
     }
     if (fileType.value === 'finishedProduct') {
-      createManualFile('finishedProduct', collectFinishedProductRows());
+      const name =
+        adminFileNameInput && adminFileNameInput.value
+          ? adminFileNameInput.value.trim()
+          : '';
+      createManualFile('finishedProduct', collectFinishedProductRows(), name);
       return;
     }
     if (fileType.value === 'rawMaterial') {
-      createManualFile('rawMaterial', collectRawMaterialRows());
+      createManualFile('rawMaterial', collectRawMaterialRows(), '');
       return;
     }
     if (fileType.value === 'billOfMaterials') {
-      createManualFile('billOfMaterials', collectBillOfMaterialsRows());
+      createManualFile('billOfMaterials', collectBillOfMaterialsRows(), '');
       return;
     }
     if (fileType.value === 'splScrap') {
-      createManualFile('splScrap', collectSplScrapRows());
+      createManualFile('splScrap', collectSplScrapRows(), '');
       return;
     }
     renderErrorList([{ message: 'Este tipo a\u00fan no est\u00e1 disponible.' }]);

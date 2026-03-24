@@ -15,11 +15,23 @@
   };
 
   const getFileName = (job) => {
+    const customName =
+      job &&
+      job.conversionOptions &&
+      typeof job.conversionOptions.displayName === "string"
+        ? job.conversionOptions.displayName.trim()
+        : "";
+    if (customName) return customName;
     if (job && job.convertedFilePath) {
       const parts = String(job.convertedFilePath).split(/[/\\]/);
       return parts[parts.length - 1] || "-";
     }
     return job && job.fileName ? job.fileName : "-";
+  };
+
+  const getAdminDocName = (doc) => {
+    if (doc && doc.adminFileName) return doc.adminFileName;
+    return doc && doc._id ? String(doc._id) : "-";
   };
 
   const renderEmpty = (message) => {
@@ -86,6 +98,60 @@
     });
   };
 
+  const renderDocuments = (docs) => {
+    tableBody.innerHTML = "";
+
+    if (!docs.length) {
+      renderEmpty("No hay informacion para este tipo.");
+      return;
+    }
+
+    docs.forEach((doc) => {
+      const row = document.createElement("tr");
+
+      const nameCell = document.createElement("td");
+      nameCell.textContent = getAdminDocName(doc);
+
+      const updatedCell = document.createElement("td");
+      updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
+
+      const userCell = document.createElement("td");
+      const userId = doc.createdBy ? String(doc.createdBy) : "";
+      const userLabel = userCache.get(userId) || userId || "N/A";
+      userCell.textContent = userLabel;
+
+      const actionsCell = document.createElement("td");
+      const actionsWrap = document.createElement("div");
+      actionsWrap.className = "admin-actions";
+
+      const updateBtn = document.createElement("button");
+      updateBtn.type = "button";
+      updateBtn.textContent = "Actualizar";
+      updateBtn.addEventListener("click", () => {
+        console.log("Actualizar no implementado", doc);
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "row-remove-btn";
+      deleteBtn.textContent = "Borrar";
+      deleteBtn.addEventListener("click", () => {
+        console.log("Borrar no implementado", doc);
+      });
+
+      actionsWrap.appendChild(updateBtn);
+      actionsWrap.appendChild(deleteBtn);
+      actionsCell.appendChild(actionsWrap);
+
+      row.appendChild(nameCell);
+      row.appendChild(updatedCell);
+      row.appendChild(userCell);
+      row.appendChild(actionsCell);
+
+      tableBody.appendChild(row);
+    });
+  };
+
   const loadUsers = async () => {
     try {
       const response = await fetch("/api/admin/users");
@@ -111,22 +177,26 @@
 
     renderEmpty("Cargando...");
 
-    try {
-      const response = await fetch("/api/conversion-jobs?page=1&limit=200");
-      if (!response.ok) {
+    if (docType === "finishedProduct") {
+      try {
+        const response = await fetch(
+          "/api/files/admin-files?type=finishedProduct&limit=200"
+        );
+        if (!response.ok) {
+          renderEmpty("Error al cargar los archivos.");
+          return;
+        }
+        const data = await response.json();
+        const docs = Array.isArray(data.documents) ? data.documents : [];
+        renderDocuments(docs);
+      } catch (error) {
+        console.error("Error loading docs:", error);
         renderEmpty("Error al cargar los archivos.");
-        return;
       }
-      const data = await response.json();
-      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
-      const filtered = jobs.filter(
-        (job) => job && job.conversionOptions && job.conversionOptions.documentType === docType
-      );
-      renderRows(filtered);
-    } catch (error) {
-      console.error("Error loading jobs:", error);
-      renderEmpty("Error al cargar los archivos.");
+      return;
     }
+
+    renderEmpty("Este tipo aun no esta habilitado.");
   };
 
   panel.classList.remove("hidden");

@@ -1,9 +1,19 @@
 const mongoose = require("mongoose");
 
 // Helper function to create schema fields from your spec
+const ALLOW_EMPTY_MANDATORY_FIELDS =
+  (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() ===
+  "true";
+// We store one document per file (rows in an array), so top-level required
+// fields should not block inserts.
+const STORE_FINISHEDPRODUCT_AS_FILE_DOC = true;
+
 const createSchemaField = (fieldSpec) => {
   let type;
-  let required = fieldSpec.requirement === "M";
+  let required =
+    fieldSpec.requirement === "M" &&
+    !ALLOW_EMPTY_MANDATORY_FIELDS &&
+    !STORE_FINISHEDPRODUCT_AS_FILE_DOC;
 
   switch (fieldSpec.type) {
     case "A": // Alphanumeric
@@ -37,6 +47,10 @@ const createSchemaField = (fieldSpec) => {
       const parts = val.split(/\s*=\s*/); // Robust split
       return parts[0]; // Always take the first part as the code
     });
+    // Allow blank for non-mandatory fields (e.g., FDA Storage/Marker)
+    if (!required) {
+      enumValues.push("");
+    }
     schemaField.enum = enumValues;
   }
 
@@ -517,12 +531,23 @@ const finishedProductSchemaSpec = [
   },
 ];
 
-const finishedProductMongooseSchema = new mongoose.Schema({});
+const finishedProductMongooseSchema = new mongoose.Schema(
+  {},
+  { timestamps: true }
+);
 // Dynamically add fields to the Mongoose schema
 finishedProductSchemaSpec.forEach((field) => {
   finishedProductMongooseSchema.add({
     [field.dataElement]: createSchemaField(field),
   });
+});
+
+// Metadata for admin listing
+finishedProductMongooseSchema.add({
+  adminFileName: { type: String, trim: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  sourceJobId: { type: mongoose.Schema.Types.ObjectId, ref: "ConversionJob" },
+  rows: { type: [mongoose.Schema.Types.Mixed], default: [] },
 });
 
 // Add the schema specification as a static property for easy access

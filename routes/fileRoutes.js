@@ -26,6 +26,9 @@ router.post('/validate', API_PROTECTED, fileController.validateManualData);
 // Ruta para crear archivo desde datos manuales (file creation)
 router.post('/create-manual', API_PROTECTED, fileController.createManualFile);
 
+// Ruta para listar archivos por tipo (admin UI)
+router.get('/admin-files', API_PROTECTED, fileController.getAdminFilesByType);
+
 // Ruta para descargar un archivo convertido
 router.get('/:jobId/download', API_PROTECTED, fileController.getConvertedFile);
 
