@@ -390,6 +390,8 @@ const createManualFile = async (req, res) => {
 
         const savedDoc = await FinishedProduct.create({
           adminFileName: adminFileName || undefined,
+          lastDownloadedName:
+            typeof outputFileName === "string" ? outputFileName : undefined,
           createdBy: req.user.id,
           sourceJobId: newJob._id,
           rows: rowsToSave,
