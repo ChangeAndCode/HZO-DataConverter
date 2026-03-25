@@ -33,6 +33,11 @@ router.get(
   API_PROTECTED,
   fileController.downloadAdminFileById,
 );
+router.delete(
+  '/admin-files/:id',
+  API_PROTECTED,
+  fileController.deleteAdminFileById,
+);
 
 // Ruta para descargar un archivo convertido
 router.get('/:jobId/download', API_PROTECTED, fileController.getConvertedFile);

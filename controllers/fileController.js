@@ -3,6 +3,7 @@ const fileConversionService = require("../services/fileConversionService");
 const conversionJobRepository = require("../repositories/conversionJobRepository");
 const path = require("path");
 const fs = require("fs/promises");
+const mongoose = require("mongoose");
 const { detectDocumentType } = require("../utils/documentDetector");
 const {
   validateFormatCompatibility,
@@ -541,6 +542,43 @@ const downloadAdminFileById = async (req, res) => {
   }
 };
 
+const deleteAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+
+  if (!id) {
+    return res.status(400).json({ message: "id es requerido." });
+  }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "id invalido." });
+  }
+  if (type !== "finishedProduct") {
+    return res
+      .status(400)
+      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  }
+
+  try {
+    const doc = await FinishedProduct.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: "Archivo no encontrado." });
+    }
+
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
+      return res.status(403).json({ message: "Acceso denegado." });
+    }
+
+    await FinishedProduct.deleteOne({ _id: id });
+    return res.status(200).json({ message: "Archivo eliminado." });
+  } catch (error) {
+    console.error("Error al borrar archivo admin:", error);
+    return res
+      .status(500)
+      .json({ message: "Error interno al borrar el archivo." });
+  }
+};
+
 module.exports = {
   upload,
   uploadAndConvertFile,
@@ -550,4 +588,5 @@ module.exports = {
   createManualFile,
   getAdminFilesByType,
   downloadAdminFileById,
+  deleteAdminFileById,
 };

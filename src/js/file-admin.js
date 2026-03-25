@@ -2,8 +2,13 @@
   const typeSelect = document.getElementById("adminFileType");
   const panel = document.getElementById("adminFilesPanel");
   const tableBody = document.querySelector("#adminFilesTable tbody");
+  const deleteModal = document.getElementById("deleteModal");
+  const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
+  const deleteCancelBtn = document.getElementById("deleteCancelBtn");
 
   if (!typeSelect || !panel || !tableBody) return;
+  let currentDocType = "";
+  let pendingDeleteId = "";
 
   const userCache = new Map();
 
@@ -130,14 +135,14 @@
       const downloadBtn = document.createElement("button");
       downloadBtn.type = "button";
       downloadBtn.className = "download-btn";
-      downloadBtn.textContent = "Descargar";
+      downloadBtn.textContent = "D";
       downloadBtn.addEventListener("click", () => {
         window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
       });
 
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
-      updateBtn.textContent = "Actualizar";
+      updateBtn.textContent = "A";
       updateBtn.addEventListener("click", () => {
         console.log("Actualizar no implementado", doc);
       });
@@ -145,9 +150,10 @@
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "row-remove-btn";
-      deleteBtn.textContent = "Borrar";
+      deleteBtn.textContent = "B";
       deleteBtn.addEventListener("click", () => {
-        console.log("Borrar no implementado", doc);
+        pendingDeleteId = doc._id;
+        if (deleteModal) deleteModal.classList.remove("hidden");
       });
 
       actionsWrap.appendChild(downloadBtn);
@@ -183,6 +189,7 @@
 
   const loadJobsForType = async (docType) => {
     panel.classList.remove("hidden");
+    currentDocType = docType || "";
     if (!docType) {
       renderEmpty("Seleccione un tipo de archivo.");
       return;
@@ -222,5 +229,48 @@
 
   if (typeSelect.value) {
     loadJobsForType(typeSelect.value);
+  }
+
+  if (deleteCancelBtn) {
+    deleteCancelBtn.addEventListener("click", () => {
+      pendingDeleteId = "";
+      if (deleteModal) deleteModal.classList.add("hidden");
+    });
+  }
+
+  if (deleteConfirmBtn) {
+    deleteConfirmBtn.addEventListener("click", () => {
+      if (!pendingDeleteId) return;
+      deleteConfirmBtn.disabled = true;
+      fetch(`/api/files/admin-files/${pendingDeleteId}?type=finishedProduct`, {
+        method: "DELETE",
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("No se pudo borrar el archivo.");
+          }
+          return response.json();
+        })
+        .then(() => {
+          if (deleteModal) deleteModal.classList.add("hidden");
+          pendingDeleteId = "";
+          loadJobsForType(currentDocType || "finishedProduct");
+        })
+        .catch((error) => {
+          console.error("Error deleting doc:", error);
+        })
+        .finally(() => {
+          deleteConfirmBtn.disabled = false;
+        });
+    });
+  }
+
+  if (deleteModal) {
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) {
+        pendingDeleteId = "";
+        deleteModal.classList.add("hidden");
+      }
+    });
   }
 });
