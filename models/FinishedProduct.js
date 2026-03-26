@@ -547,6 +547,7 @@ finishedProductMongooseSchema.add({
   adminFileName: { type: String, trim: true },
   lastDownloadedName: { type: String, trim: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   sourceJobId: { type: mongoose.Schema.Types.ObjectId, ref: "ConversionJob" },
   rows: { type: [mongoose.Schema.Types.Mixed], default: [] },
 });

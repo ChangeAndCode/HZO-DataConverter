@@ -2,6 +2,9 @@
   const typeSelect = document.getElementById("adminFileType");
   const panel = document.getElementById("adminFilesPanel");
   const tableBody = document.querySelector("#adminFilesTable tbody");
+  const deleteModal = document.getElementById("deleteModal");
+  const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
+  const deleteCancelBtn = document.getElementById("deleteCancelBtn");
 
   // Filtros por columna
   const filterNombre = document.getElementById("filterNombre");
@@ -73,6 +76,9 @@
   );
 
   if (!typeSelect || !panel || !tableBody) return;
+  let currentDocType = "";
+  let pendingDeleteId = "";
+  let usersLoaded = false;
 
   const userCache = new Map();
 
@@ -167,7 +173,7 @@
     });
   };
 
-  const renderDocuments = (docs) => {
+  const renderDocuments = (docs, docType) => {
     filesList = docs; // <-- Actualiza la lista global para los filtros
     tableBody.innerHTML = "";
     if (!docs.length) {
@@ -183,7 +189,11 @@
       const updatedCell = document.createElement("td");
       updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
       const userCell = document.createElement("td");
-      const userId = doc.createdBy ? String(doc.createdBy) : "";
+      const userId = doc.updatedBy
+        ? String(doc.updatedBy)
+        : doc.createdBy
+          ? String(doc.createdBy)
+          : "";
       const userLabel = userCache.get(userId) || userId || "N/A";
       userCell.textContent = userLabel;
       const actionsCell = document.createElement("td");
@@ -195,7 +205,7 @@
       downloadBtn.title = "Descargar";
       downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v8m0 0l-4-4m4 4l4-4"/><rect x="4" y="16" width="12" height="2" rx="1"/></svg>`;
       downloadBtn.addEventListener("click", () => {
-        window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
+        window.location.href = `/api/files/admin-files/${doc._id}/download?type=${docType}`;
       });
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
@@ -203,7 +213,7 @@
       updateBtn.title = "Actualizar";
       updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
       updateBtn.addEventListener("click", () => {
-        console.log("Actualizar no implementado", doc);
+        window.location.href = `/file-creation?edit=${doc._id}&type=${docType}`;
       });
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
@@ -211,7 +221,8 @@
       deleteBtn.title = "Borrar";
       deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="11" rx="2"/><path d="M8 9v5m4-5v5M5 6V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>`;
       deleteBtn.addEventListener("click", () => {
-        console.log("Borrar no implementado", doc);
+        pendingDeleteId = doc._id;
+        if (deleteModal) deleteModal.classList.remove("hidden");
       });
       actionsWrap.style.display = "flex";
       actionsWrap.style.gap = "4px";
@@ -229,23 +240,33 @@
   };
 
   const loadUsers = async () => {
+    if (usersLoaded) return;
     try {
       const response = await fetch("/api/admin/users");
-      if (!response.ok) return;
+      if (!response.ok) {
+        usersLoaded = false;
+        return;
+      }
       const users = await response.json();
-      if (!Array.isArray(users)) return;
+      if (!Array.isArray(users)) {
+        usersLoaded = false;
+        return;
+      }
       users.forEach((user) => {
         if (!user || !user.id) return;
         const label = user.displayName || user.email || user.id;
         userCache.set(user.id, label);
       });
+      usersLoaded = true;
     } catch (error) {
+      usersLoaded = false;
       console.warn("No se pudo cargar el catalogo de usuarios", error);
     }
   };
 
   const loadJobsForType = async (docType) => {
     panel.classList.remove("hidden");
+    currentDocType = docType || "";
     if (!docType) {
       renderEmpty("Seleccione un tipo de archivo.");
       return;
@@ -255,6 +276,7 @@
 
     if (docType === "finishedProduct") {
       try {
+        await loadUsers();
         const response = await fetch(
           "/api/files/admin-files?type=finishedProduct&limit=200",
         );
@@ -264,7 +286,47 @@
         }
         const data = await response.json();
         const docs = Array.isArray(data.documents) ? data.documents : [];
-        renderDocuments(docs);
+        renderDocuments(docs, docType);
+      } catch (error) {
+        console.error("Error loading docs:", error);
+        renderEmpty("Error al cargar los archivos.");
+      }
+      return;
+    }
+
+    if (docType === "billOfMaterials") {
+      try {
+        await loadUsers();
+        const response = await fetch(
+          "/api/files/admin-files?type=billOfMaterials&limit=200"
+        );
+        if (!response.ok) {
+          renderEmpty("Error al cargar los archivos.");
+          return;
+        }
+        const data = await response.json();
+        const docs = Array.isArray(data.documents) ? data.documents : [];
+        renderDocuments(docs, docType);
+      } catch (error) {
+        console.error("Error loading docs:", error);
+        renderEmpty("Error al cargar los archivos.");
+      }
+      return;
+    }
+
+    if (docType === "rawMaterial") {
+      try {
+        await loadUsers();
+        const response = await fetch(
+          "/api/files/admin-files?type=rawMaterial&limit=200"
+        );
+        if (!response.ok) {
+          renderEmpty("Error al cargar los archivos.");
+          return;
+        }
+        const data = await response.json();
+        const docs = Array.isArray(data.documents) ? data.documents : [];
+        renderDocuments(docs, docType);
       } catch (error) {
         console.error("Error loading docs:", error);
         renderEmpty("Error al cargar los archivos.");
@@ -283,7 +345,59 @@
     loadJobsForType(e.target.value);
   });
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const preselectedType = urlParams.get("type");
+  if (
+    preselectedType &&
+    typeSelect.querySelector(`option[value="${preselectedType}"]`)
+  ) {
+    typeSelect.value = preselectedType;
+  }
+
   if (typeSelect.value) {
     loadJobsForType(typeSelect.value);
+  }
+
+  if (deleteCancelBtn) {
+    deleteCancelBtn.addEventListener("click", () => {
+      pendingDeleteId = "";
+      if (deleteModal) deleteModal.classList.add("hidden");
+    });
+  }
+
+  if (deleteConfirmBtn) {
+    deleteConfirmBtn.addEventListener("click", () => {
+      if (!pendingDeleteId) return;
+      deleteConfirmBtn.disabled = true;
+      fetch(`/api/files/admin-files/${pendingDeleteId}?type=${currentDocType}`, {
+        method: "DELETE",
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("No se pudo borrar el archivo.");
+          }
+          return response.json();
+        })
+        .then(() => {
+          if (deleteModal) deleteModal.classList.add("hidden");
+          pendingDeleteId = "";
+          loadJobsForType(currentDocType || "finishedProduct");
+        })
+        .catch((error) => {
+          console.error("Error deleting doc:", error);
+        })
+        .finally(() => {
+          deleteConfirmBtn.disabled = false;
+        });
+    });
+  }
+
+  if (deleteModal) {
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) {
+        pendingDeleteId = "";
+        deleteModal.classList.add("hidden");
+      }
+    });
   }
 });
