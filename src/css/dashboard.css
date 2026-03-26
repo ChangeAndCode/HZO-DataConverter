@@ -1,7 +1,9 @@
 /* dashboard.css */
 body {
-  background-color: #e6f7ff; /* Light blue background for dashboard */
+  background-color: #e6f7ff;
+  /* Light blue background for dashboard */
 }
+
 .container {
   width: 700px;
   padding: 40px;
@@ -9,16 +11,21 @@ body {
   flex-direction: column;
   align-items: center;
 }
+
 h1 {
-  color: #007bff; /* Primary blue header */
+  color: #007bff;
+  /* Primary blue header */
   margin-bottom: 25px;
   font-size: 2.2em;
 }
+
 p {
-  text-align: center; /* Center basic info */
+  text-align: center;
+  /* Center basic info */
   font-size: 1.05em;
   margin-bottom: 8px;
 }
+
 p strong {
   color: #2c3e50;
 }
@@ -42,7 +49,8 @@ p strong {
   transition: color 0.3s ease, border-bottom 0.3s ease;
   border-bottom: 3px solid transparent;
   margin: 0 5px;
-  white-space: nowrap; /* Prevent wrapping */
+  white-space: nowrap;
+  /* Prevent wrapping */
 }
 
 .dashboard-tabs button.active {
@@ -61,11 +69,13 @@ p strong {
 }
 
 .tab-pane {
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
 }
 
 .tab-pane.active {
-  display: block; /* Show active tab */
+  display: block;
+  /* Show active tab */
 }
 
 .info-section,
@@ -75,6 +85,7 @@ p strong {
   border-top: 1px solid #eee;
   text-align: left;
 }
+
 .info-section h2,
 .action-section h2 {
   font-size: 1.6em;
@@ -83,6 +94,7 @@ p strong {
   border-bottom: none;
   padding-bottom: 0;
 }
+
 .info-section p {
   text-align: left;
   margin-bottom: 10px;
@@ -100,6 +112,7 @@ p strong {
 .form-group {
   margin-bottom: 20px;
 }
+
 .form-group label {
   display: block;
   margin-bottom: 8px;
@@ -109,8 +122,10 @@ p strong {
 
 .action-section input[type='password'],
 .action-section input[type='email'] {
-  width: calc(100% - 24px); /* Full width minus padding/border */
-  max-width: 400px; /* Limit input width */
+  width: calc(100% - 24px);
+  /* Full width minus padding/border */
+  max-width: 400px;
+  /* Limit input width */
   margin-right: 15px;
   display: inline-block;
 }
@@ -125,16 +140,22 @@ p strong {
 .google-link-btn {
   background-color: #4285f4;
 }
+
 .google-link-btn:hover {
   background-color: #357ae8;
+  font-weight: 600;
 }
+
 #unlinkGoogleBtn {
-  background-color: #dc3545; /* Red for unlink */
+  background-color: #dc3545;
+  /* Red for unlink */
   color: white;
 }
+
 #unlinkGoogleBtn:hover {
   background-color: #c82333;
 }
+
 #jwtTokenDisplay {
   background-color: #f5f8fb;
   padding: 20px;
@@ -147,13 +168,16 @@ p strong {
   color: #333;
   white-space: pre-wrap;
   border: 1px solid #e0e0e0;
-  position: relative; /* For copy button */
+  position: relative;
+  /* For copy button */
 }
+
 #jwtTokenDisplay.bugged {
   /* Style for bugged JWT - e.g., red border or distinct background */
   border: 2px dashed #dc3545;
   background-color: #fff0f0;
 }
+
 #copyJwtBtn {
   position: absolute;
   top: 10px;
@@ -166,6 +190,7 @@ p strong {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
+
 #copyJwtBtn:hover {
   background-color: #5a6268;
 }
@@ -178,11 +203,13 @@ p strong {
   color: #666;
   text-align: left;
 }
+
 .api-info h3 {
   font-size: 1.3em;
   color: #444;
   margin-bottom: 15px;
 }
+
 .api-info pre {
   background-color: #f0f2f5;
   padding: 18px;
@@ -194,6 +221,7 @@ p strong {
   color: #333;
   border: 1px solid #e0e0e0;
 }
+
 .api-info code {
   font-family: 'Consolas', 'Monaco', monospace;
 }

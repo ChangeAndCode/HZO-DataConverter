@@ -4,32 +4,56 @@ body {
   /* Same as dashboard for consistency */
 }
 
-.container {
-  width: 800px;
-  /* Increased width for better layout */
+/* Botones de acción de archivos: solo icono, sin color ni fondo especial */
+.admin-action-btn {
+  border: none;
+  padding: 4px;
+  font-size: 1.3em;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 0 2px;
+  display: inline-flex;
   align-items: center;
-  padding: 20px 40px;
-  /* Reduced top/bottom padding */
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  vertical-align: middle;
 }
 
-h1 {
-  color: #007bff;
-  margin-bottom: 20px;
-  font-size: 2.2em;
+.download-btn {
+  background: #28a745 !important;
 }
 
-.form-group {
-  margin-bottom: 15px;
-  text-align: left;
-  width: 100%;
+.update-btn {
+  background: #17a2b8 !important;
 }
 
-.form-group label {
+.delete-btn {
+  background: #dc3545 !important;
+}
+
+.admin-action-btn:hover,
+.admin-action-btn:focus {
+  font-weight: 600;
+  outline: 1.5px solid #bbb;
+}
+
+#format-finishedProduct {
+  margin-bottom: 50px;
+}
+
+#adminFilesPanel {
+  margin-bottom: 50px;
+}
+
+.admin-action-btn svg {
+  width: 20px;
+  height: 20px;
   display: block;
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #333;
-  font-size: 1.05em;
+  margin: auto;
+  pointer-events: none;
 }
 
 /* The default input styling from main.css will now correctly apply */
@@ -310,16 +334,42 @@ h2 {
   max-height: 350px;
   overflow-y: auto;
 }
+
 .admin-files-panel {
   width: 100%;
   margin-top: 20px;
   text-align: left;
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
 }
+
+/* Scrollbar personalizado para archivos admin */
+.admin-files-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-files-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.admin-files-panel::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 4px;
+}
+
+.admin-files-panel::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
 .admin-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -329,6 +379,7 @@ h2 {
   justify-content: center;
   z-index: 1000;
 }
+
 .modal {
   background: #ffffff;
   border-radius: 10px;
@@ -338,20 +389,24 @@ h2 {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: left;
 }
+
 .modal h3 {
   margin: 0 0 10px;
   font-size: 1.2em;
   color: #2c3e50;
 }
+
 .modal p {
   margin: 0 0 18px;
   color: #444;
 }
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
