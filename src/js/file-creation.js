@@ -415,6 +415,17 @@ function setRawMaterialRows(rows = []) {
   updateTableScroll(rmBody);
 }
 
+function setBillOfMaterialsRows(rows = []) {
+  if (!bmBody) return;
+  if (!bmInitialized) {
+    buildBillOfMaterialsTable();
+    bmInitialized = true;
+  }
+  bmBody.innerHTML = "";
+  const list = Array.isArray(rows) && rows.length ? rows : [{}];
+  list.forEach((row) => addBillOfMaterialsRow(row));
+  updateTableScroll(bmBody);
+}
 // Utilidad para scroll interno en tablas si hay más de 6 filas
 function updateTableScroll(tbody) {
   if (!tbody) return;
@@ -561,7 +572,7 @@ function buildBillOfMaterialsTable() {
   updateTableScroll(bmBody);
 }
 
-function addBillOfMaterialsRow() {
+function addBillOfMaterialsRow(values = {}) {
   if (!bmBody) return;
   const row = document.createElement("tr");
 
@@ -572,6 +583,13 @@ function addBillOfMaterialsRow() {
     input.name = `billOfMaterials[${col.key}][]`;
     input.placeholder = col.label;
     if (col.maxLength) input.maxLength = col.maxLength;
+    const rawVal =
+      values && Object.prototype.hasOwnProperty.call(values, col.label)
+        ? values[col.label]
+        : "";
+    if (rawVal !== null && rawVal !== undefined) {
+      input.value = String(rawVal);
+    }
     if (col.required) input.required = true;
     if (
       col.key === "finishedGoodPartNumber" ||
@@ -869,14 +887,18 @@ function showFormat(type) {
     document.getElementById(id).classList.remove("hidden");
   }
   if (adminFileNameGroup) {
-    if (type === "finishedProduct" || type === "rawMaterial") {
+    if (
+      type === "finishedProduct" ||
+      type === "rawMaterial" ||
+      type === "billOfMaterials"
+    ) {
       adminFileNameGroup.classList.remove("hidden");
     } else {
       adminFileNameGroup.classList.add("hidden");
       if (adminFileNameInput) adminFileNameInput.value = "";
     }
   }
-  if (type === 'finishedProduct' && !fpInitialized) {
+  if (type === "finishedProduct" && !fpInitialized) {
     buildFinishedProductTable();
     fpInitialized = true;
   }
@@ -1103,10 +1125,12 @@ async function createManualFile(documentType, rows, displayName) {
 async function loadFileForEdit(docId, docType) {
   if (!docId) return;
   const targetType = docType || "finishedProduct";
-  if (targetType !== "finishedProduct" && targetType !== "rawMaterial") {
-    renderErrorList([
-      { message: "Tipo de archivo invalido para editar." },
-    ]);
+  if (
+    targetType !== "finishedProduct" &&
+    targetType !== "rawMaterial" &&
+    targetType !== "billOfMaterials"
+  ) {
+    renderErrorList([{ message: "Tipo de archivo invalido para editar." }]);
     return;
   }
   try {
@@ -1140,6 +1164,8 @@ async function loadFileForEdit(docId, docType) {
       setFinishedProductRows(doc.rows || []);
     } else if (targetType === "rawMaterial") {
       setRawMaterialRows(doc.rows || []);
+    } else if (targetType === "billOfMaterials") {
+      setBillOfMaterialsRows(doc.rows || []);
     }
 
     if (createFileButton) createFileButton.classList.add("hidden");
@@ -1181,7 +1207,11 @@ if (createFileButton) {
       return;
     }
     if (fileType.value === "billOfMaterials") {
-      createManualFile("billOfMaterials", collectBillOfMaterialsRows(), "");
+      const name =
+        adminFileNameInput && adminFileNameInput.value
+          ? adminFileNameInput.value.trim()
+          : "";
+      createManualFile("billOfMaterials", collectBillOfMaterialsRows(), name);
       return;
     }
     if (fileType.value === "splScrap") {
@@ -1202,7 +1232,11 @@ if (updateFileButton) {
       return;
     }
     const targetType = fileType.value;
-    if (targetType !== "finishedProduct" && targetType !== "rawMaterial") {
+    if (
+      targetType !== "finishedProduct" &&
+      targetType !== "rawMaterial" &&
+      targetType !== "billOfMaterials"
+    ) {
       renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
       return;
     }
@@ -1210,7 +1244,9 @@ if (updateFileButton) {
     const rows =
       targetType === "rawMaterial"
         ? collectRawMaterialRows()
-        : collectFinishedProductRows();
+        : targetType === "billOfMaterials"
+          ? collectBillOfMaterialsRows()
+          : collectFinishedProductRows();
     if (!rows.length) {
       renderErrorList([{ message: "No hay filas con datos para actualizar." }]);
       return;

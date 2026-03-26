@@ -15,6 +15,7 @@ const {
 } = require("../utils/validationUtils");
 const { applyTransformations } = require("../utils/transformationUtils");
 const FinishedProduct = require("../models/FinishedProduct");
+const BillOfMaterials = require("../models/BOM");
 const RawMaterial = require("../models/RawMaterial");
 
 // Middleware de Multer (configúralo una vez)
@@ -424,6 +425,23 @@ const createManualFile = async (req, res) => {
           console.log(
             `[RawMaterial] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
           );
+        } else if (documentType === "billOfMaterials") {
+          const savedDoc = await BillOfMaterials.create({
+            adminFileName: adminFileName || undefined,
+            lastDownloadedName:
+              typeof outputFileName === "string" ? outputFileName : undefined,
+            createdBy: req.user.id,
+            updatedBy: req.user.id,
+            sourceJobId: newJob._id,
+            rows: rowsToSave,
+          });
+
+          savedCount = savedDoc ? 1 : 0;
+          savedDb = BillOfMaterials.db.name;
+          savedCollection = BillOfMaterials.collection.name;
+          console.log(
+            `[BOM] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+          );
         }
       }
     }
@@ -466,9 +484,14 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(400).json({ message: "type es requerido." });
   }
 
-  if (type !== "finishedProduct" && type !== "rawMaterial") {
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
     return res.status(400).json({
-      message: "Solo finishedProduct y rawMaterial estan habilitados por ahora.",
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados por ahora.",
     });
   }
 
@@ -479,7 +502,12 @@ const getAdminFilesByType = async (req, res) => {
 
     const selectFields =
       "adminFileName lastDownloadedName createdBy updatedBy createdAt updatedAt";
-    const model = type === "rawMaterial" ? RawMaterial : FinishedProduct;
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
     const docs = await model
       .find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
@@ -506,14 +534,24 @@ const getAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct" && type !== "rawMaterial") {
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
     return res.status(400).json({
-      message: "Solo finishedProduct y rawMaterial estan habilitados por ahora.",
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
     });
   }
 
   try {
-    const model = type === "rawMaterial" ? RawMaterial : FinishedProduct;
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
     const doc = await model.findById(id).lean();
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -540,14 +578,24 @@ const downloadAdminFileById = async (req, res) => {
   if (!id) {
     return res.status(400).json({ message: "id es requerido." });
   }
-  if (type !== "finishedProduct" && type !== "rawMaterial") {
-    return res
-      .status(400)
-      .json({ message: "Solo finishedProduct y rawMaterial estan habilitados." });
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
+    return res.status(400).json({
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+    });
   }
 
   try {
-    const model = type === "rawMaterial" ? RawMaterial : FinishedProduct;
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -581,7 +629,9 @@ const downloadAdminFileById = async (req, res) => {
       });
     }
 
-    const fallbackName = type === "rawMaterial" ? "rawMaterial.txt" : "finishedProduct.txt";
+    let fallbackName = "finishedProduct.txt";
+    if (type === "rawMaterial") fallbackName = "rawMaterial.txt";
+    if (type === "billOfMaterials") fallbackName = "billOfMaterials.txt";
     const nomenclature =
       typeof outputFileName === "string" && outputFileName
         ? outputFileName
@@ -617,9 +667,14 @@ const updateAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct" && type !== "rawMaterial") {
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
     return res.status(400).json({
-      message: "Solo finishedProduct y rawMaterial estan habilitados por ahora.",
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
     });
   }
   if (!Array.isArray(rows)) {
@@ -627,7 +682,12 @@ const updateAdminFileById = async (req, res) => {
   }
 
   try {
-    const model = type === "rawMaterial" ? RawMaterial : FinishedProduct;
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -696,14 +756,24 @@ const deleteAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct" && type !== "rawMaterial") {
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
     return res.status(400).json({
-      message: "Solo finishedProduct y rawMaterial estan habilitados por ahora.",
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
     });
   }
 
   try {
-    const model = type === "rawMaterial" ? RawMaterial : FinishedProduct;
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
