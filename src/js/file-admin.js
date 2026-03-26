@@ -3,6 +3,75 @@
   const panel = document.getElementById("adminFilesPanel");
   const tableBody = document.querySelector("#adminFilesTable tbody");
 
+  // Filtros por columna
+  const filterNombre = document.getElementById("filterNombre");
+  const filterNomenclatura = document.getElementById("filterNomenclatura");
+  const filterFecha = document.getElementById("filterFecha");
+  const filterUsuario = document.getElementById("filterUsuario");
+
+  let filesList = [];
+
+  function applyColumnFilters() {
+    let filtered = filesList;
+    if (filterNombre && filterNombre.value.trim() !== "") {
+      const val = filterNombre.value.trim().toLowerCase();
+      filtered = filtered.filter((file) => {
+        return (
+          (file.adminFileName &&
+            String(file.adminFileName).toLowerCase().includes(val)) ||
+          (file.fileName && String(file.fileName).toLowerCase().includes(val))
+        );
+      });
+    }
+    if (filterNomenclatura && filterNomenclatura.value.trim() !== "") {
+      const val = filterNomenclatura.value.trim().toLowerCase();
+      filtered = filtered.filter((file) => {
+        return (
+          (file.lastDownloadedName &&
+            String(file.lastDownloadedName).toLowerCase().includes(val)) ||
+          (file.nomenclature &&
+            String(file.nomenclature).toLowerCase().includes(val))
+        );
+      });
+    }
+    if (filterFecha && filterFecha.value.trim() !== "") {
+      const val = filterFecha.value.trim().toLowerCase();
+      filtered = filtered.filter((file) => {
+        const created = file.createdAt
+          ? formatDate(file.createdAt).toLowerCase()
+          : "";
+        const updated = file.updatedAt
+          ? formatDate(file.updatedAt).toLowerCase()
+          : "";
+        return created.includes(val) || updated.includes(val);
+      });
+    }
+    if (filterUsuario && filterUsuario.value.trim() !== "") {
+      const val = filterUsuario.value.trim().toLowerCase();
+      filtered = filtered.filter((file) => {
+        const user = file.createdBy || file.userId || "";
+        const userLabel = userCache.get(user) || user;
+        return String(userLabel).toLowerCase().includes(val);
+      });
+    }
+    if (
+      filtered.length &&
+      (filtered[0].adminFileName || filtered[0].lastDownloadedName)
+    ) {
+      renderDocuments(filtered);
+    } else {
+      renderRows(filtered);
+    }
+  }
+
+  [filterNombre, filterNomenclatura, filterFecha, filterUsuario].forEach(
+    (input) => {
+      if (input) {
+        input.addEventListener("input", applyColumnFilters);
+      }
+    },
+  );
+
   if (!typeSelect || !panel || !tableBody) return;
 
   const userCache = new Map();
@@ -99,68 +168,62 @@
   };
 
   const renderDocuments = (docs) => {
+    filesList = docs; // <-- Actualiza la lista global para los filtros
     tableBody.innerHTML = "";
-
     if (!docs.length) {
       renderEmpty("No hay informacion para este tipo.");
       return;
     }
-
     docs.forEach((doc) => {
       const row = document.createElement("tr");
-
       const nameCell = document.createElement("td");
       nameCell.textContent = getAdminDocName(doc);
-
       const nomenclatureCell = document.createElement("td");
       nomenclatureCell.textContent = doc.lastDownloadedName || "-";
-
       const updatedCell = document.createElement("td");
       updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
-
       const userCell = document.createElement("td");
       const userId = doc.createdBy ? String(doc.createdBy) : "";
       const userLabel = userCache.get(userId) || userId || "N/A";
       userCell.textContent = userLabel;
-
       const actionsCell = document.createElement("td");
       const actionsWrap = document.createElement("div");
       actionsWrap.className = "admin-actions";
-
       const downloadBtn = document.createElement("button");
       downloadBtn.type = "button";
-      downloadBtn.className = "download-btn";
-      downloadBtn.textContent = "Descargar";
+      downloadBtn.className = "admin-action-btn download-btn";
+      downloadBtn.title = "Descargar";
+      downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v8m0 0l-4-4m4 4l4-4"/><rect x="4" y="16" width="12" height="2" rx="1"/></svg>`;
       downloadBtn.addEventListener("click", () => {
         window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
       });
-
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
-      updateBtn.textContent = "Actualizar";
+      updateBtn.className = "admin-action-btn update-btn";
+      updateBtn.title = "Actualizar";
+      updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
       updateBtn.addEventListener("click", () => {
         console.log("Actualizar no implementado", doc);
       });
-
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
-      deleteBtn.className = "row-remove-btn";
-      deleteBtn.textContent = "Borrar";
+      deleteBtn.className = "admin-action-btn delete-btn";
+      deleteBtn.title = "Borrar";
+      deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="11" rx="2"/><path d="M8 9v5m4-5v5M5 6V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>`;
       deleteBtn.addEventListener("click", () => {
         console.log("Borrar no implementado", doc);
       });
-
+      actionsWrap.style.display = "flex";
+      actionsWrap.style.gap = "4px";
       actionsWrap.appendChild(downloadBtn);
       actionsWrap.appendChild(updateBtn);
       actionsWrap.appendChild(deleteBtn);
       actionsCell.appendChild(actionsWrap);
-
       row.appendChild(nameCell);
       row.appendChild(nomenclatureCell);
       row.appendChild(updatedCell);
       row.appendChild(userCell);
       row.appendChild(actionsCell);
-
       tableBody.appendChild(row);
     });
   };
@@ -193,7 +256,7 @@
     if (docType === "finishedProduct") {
       try {
         const response = await fetch(
-          "/api/files/admin-files?type=finishedProduct&limit=200"
+          "/api/files/admin-files?type=finishedProduct&limit=200",
         );
         if (!response.ok) {
           renderEmpty("Error al cargar los archivos.");
