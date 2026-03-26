@@ -140,14 +140,14 @@
       const downloadBtn = document.createElement("button");
       downloadBtn.type = "button";
       downloadBtn.className = "download-btn";
-      downloadBtn.textContent = "Descargar";
+      downloadBtn.textContent = "D";
       downloadBtn.addEventListener("click", () => {
         window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
       });
 
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
-      updateBtn.textContent = "Actualizar";
+      updateBtn.textContent = "A";
       updateBtn.addEventListener("click", () => {
         window.location.href = `/file-creation?edit=${doc._id}`;
       });
@@ -155,7 +155,7 @@
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "row-remove-btn";
-      deleteBtn.textContent = "Borrar";
+      deleteBtn.textContent = "B";
       deleteBtn.addEventListener("click", () => {
         pendingDeleteId = doc._id;
         if (deleteModal) deleteModal.classList.remove("hidden");
