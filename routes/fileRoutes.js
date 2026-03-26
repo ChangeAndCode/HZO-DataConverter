@@ -29,9 +29,19 @@ router.post('/create-manual', API_PROTECTED, fileController.createManualFile);
 // Ruta para listar archivos por tipo (admin UI)
 router.get('/admin-files', API_PROTECTED, fileController.getAdminFilesByType);
 router.get(
+  '/admin-files/:id',
+  API_PROTECTED,
+  fileController.getAdminFileById,
+);
+router.get(
   '/admin-files/:id/download',
   API_PROTECTED,
   fileController.downloadAdminFileById,
+);
+router.put(
+  '/admin-files/:id',
+  API_PROTECTED,
+  fileController.updateAdminFileById,
 );
 router.delete(
   '/admin-files/:id',

@@ -9,6 +9,7 @@
   if (!typeSelect || !panel || !tableBody) return;
   let currentDocType = "";
   let pendingDeleteId = "";
+  let usersLoaded = false;
 
   const userCache = new Map();
 
@@ -124,7 +125,11 @@
       updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
 
       const userCell = document.createElement("td");
-      const userId = doc.createdBy ? String(doc.createdBy) : "";
+      const userId = doc.updatedBy
+        ? String(doc.updatedBy)
+        : doc.createdBy
+          ? String(doc.createdBy)
+          : "";
       const userLabel = userCache.get(userId) || userId || "N/A";
       userCell.textContent = userLabel;
 
@@ -135,22 +140,22 @@
       const downloadBtn = document.createElement("button");
       downloadBtn.type = "button";
       downloadBtn.className = "download-btn";
-      downloadBtn.textContent = "D";
+      downloadBtn.textContent = "Descargar";
       downloadBtn.addEventListener("click", () => {
         window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
       });
 
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
-      updateBtn.textContent = "A";
+      updateBtn.textContent = "Actualizar";
       updateBtn.addEventListener("click", () => {
-        console.log("Actualizar no implementado", doc);
+        window.location.href = `/file-creation?edit=${doc._id}`;
       });
 
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "row-remove-btn";
-      deleteBtn.textContent = "B";
+      deleteBtn.textContent = "Borrar";
       deleteBtn.addEventListener("click", () => {
         pendingDeleteId = doc._id;
         if (deleteModal) deleteModal.classList.remove("hidden");
@@ -172,17 +177,26 @@
   };
 
   const loadUsers = async () => {
+    if (usersLoaded) return;
     try {
       const response = await fetch("/api/admin/users");
-      if (!response.ok) return;
+      if (!response.ok) {
+        usersLoaded = false;
+        return;
+      }
       const users = await response.json();
-      if (!Array.isArray(users)) return;
+      if (!Array.isArray(users)) {
+        usersLoaded = false;
+        return;
+      }
       users.forEach((user) => {
         if (!user || !user.id) return;
         const label = user.displayName || user.email || user.id;
         userCache.set(user.id, label);
       });
+      usersLoaded = true;
     } catch (error) {
+      usersLoaded = false;
       console.warn("No se pudo cargar el catalogo de usuarios", error);
     }
   };
@@ -199,6 +213,7 @@
 
     if (docType === "finishedProduct") {
       try {
+        await loadUsers();
         const response = await fetch(
           "/api/files/admin-files?type=finishedProduct&limit=200"
         );
@@ -226,6 +241,15 @@
   typeSelect.addEventListener("change", (e) => {
     loadJobsForType(e.target.value);
   });
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const preselectedType = urlParams.get("type");
+  if (
+    preselectedType &&
+    typeSelect.querySelector(`option[value="${preselectedType}"]`)
+  ) {
+    typeSelect.value = preselectedType;
+  }
 
   if (typeSelect.value) {
     loadJobsForType(typeSelect.value);

@@ -1,9 +1,11 @@
 const fileType = document.getElementById('fileType');
 const sections = document.querySelectorAll('.format-section');
 const createFileButton = document.getElementById('createFileButton');
+const updateFileButton = document.getElementById('updateFileButton');
 const validationResult = document.getElementById('validationResult');
 const adminFileNameGroup = document.getElementById('adminFileNameGroup');
 const adminFileNameInput = document.getElementById('adminFileName');
+let editingFileId = "";
 
 const map = {
   finishedProduct: "format-finishedProduct",
@@ -276,7 +278,7 @@ function buildRawMaterialTable() {
   updateTableScroll(rmBody);
 }
 
-function addFinishedProductRow() {
+function addFinishedProductRow(values = {}) {
   if (!fpBody) return;
   const row = document.createElement("tr");
 
@@ -286,6 +288,20 @@ function addFinishedProductRow() {
     input.type = "text";
     input.name = `finishedProduct[${col.key}][]`;
     input.placeholder = col.label;
+    const rawVal =
+      values && Object.prototype.hasOwnProperty.call(values, col.label)
+        ? values[col.label]
+        : "";
+    let displayVal = rawVal;
+    if (
+      col.label === "Period (From)" ||
+      col.label === "Period (To)"
+    ) {
+      displayVal = formatYmdCompact(rawVal);
+    }
+    if (displayVal !== null && displayVal !== undefined) {
+      input.value = String(displayVal);
+    }
     if (col.maxLength) input.maxLength = col.maxLength;
     if (col.required) input.required = true;
     if (col.key === "partNumber") {
@@ -372,6 +388,18 @@ function addFinishedProductRow() {
   row.appendChild(actionsTd);
 
   fpBody.appendChild(row);
+  updateTableScroll(fpBody);
+}
+
+function setFinishedProductRows(rows = []) {
+  if (!fpBody) return;
+  if (!fpInitialized) {
+    buildFinishedProductTable();
+    fpInitialized = true;
+  }
+  fpBody.innerHTML = "";
+  const list = Array.isArray(rows) && rows.length ? rows : [{}];
+  list.forEach((row) => addFinishedProductRow(row));
   updateTableScroll(fpBody);
 }
 
@@ -623,6 +651,20 @@ function formatYmd(value) {
   if (m) out += `-${m}`;
   if (d) out += `-${d}`;
   return out;
+}
+
+function formatYmdCompact(value) {
+  if (value === null || value === undefined || value === "") return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, "0");
+    const d = String(value.getDate()).padStart(2, "0");
+    return `${y}${m}${d}`;
+  }
+  const raw = String(value).trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 8) return digits.slice(0, 8);
+  return raw;
 }
 
 function buildSplScrapMetaFields() {
@@ -1035,6 +1077,44 @@ async function createManualFile(documentType, rows, displayName) {
   }
 }
 
+async function loadFileForEdit(docId) {
+  if (!docId) return;
+  try {
+    const response = await fetch(
+      `/api/files/admin-files/${docId}?type=finishedProduct`,
+    );
+    if (!response.ok) {
+      throw new Error("No se pudo cargar el archivo.");
+    }
+    const data = await response.json();
+    const doc = data && data.document ? data.document : null;
+    if (!doc) {
+      throw new Error("Archivo no encontrado.");
+    }
+
+    editingFileId = doc._id;
+    if (fileType) {
+      fileType.value = "finishedProduct";
+      fileType.disabled = true;
+    }
+    showFormat("finishedProduct");
+
+    if (adminFileNameGroup) {
+      adminFileNameGroup.classList.remove("hidden");
+    }
+    if (adminFileNameInput) {
+      adminFileNameInput.value = doc.adminFileName || "";
+    }
+
+    setFinishedProductRows(doc.rows || []);
+
+    if (createFileButton) createFileButton.classList.add("hidden");
+    if (updateFileButton) updateFileButton.classList.remove("hidden");
+  } catch (err) {
+    renderErrorList([{ message: err.message || "Error al cargar archivo." }]);
+  }
+}
+
 if (fileType) {
   fileType.addEventListener("change", (e) => {
     showFormat(e.target.value);
@@ -1074,4 +1154,67 @@ if (createFileButton) {
       { message: "Este tipo a\u00fan no est\u00e1 disponible." },
     ]);
   });
+}
+
+if (updateFileButton) {
+  updateFileButton.addEventListener("click", async () => {
+    if (!editingFileId) return;
+    if (!fileType || fileType.value !== "finishedProduct") {
+      renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
+      return;
+    }
+
+    const rows = collectFinishedProductRows();
+    if (!rows.length) {
+      renderErrorList([{ message: "No hay filas con datos para actualizar." }]);
+      return;
+    }
+
+    const btnText = updateFileButton.querySelector(".btn-text");
+    const spinner = updateFileButton.querySelector(".spinner");
+    updateFileButton.disabled = true;
+    if (btnText) btnText.classList.add("hidden");
+    if (spinner) spinner.classList.remove("hidden");
+
+    try {
+      const displayName =
+        adminFileNameInput && adminFileNameInput.value
+          ? adminFileNameInput.value.trim()
+          : "";
+      const response = await fetch(
+        `/api/files/admin-files/${editingFileId}?type=finishedProduct`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rows,
+            displayName: displayName || undefined,
+          }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        const errors = data && data.errors ? data.errors : [];
+        if (errors.length) {
+          renderErrorList(errors, "Errores");
+        } else {
+          throw new Error(data.message || "No se pudo actualizar.");
+        }
+        return;
+      }
+      window.location.href = "/file-admin.html?type=finishedProduct";
+    } catch (err) {
+      renderErrorList([{ message: err.message || "Error al actualizar." }]);
+    } finally {
+      updateFileButton.disabled = false;
+      if (btnText) btnText.classList.remove("hidden");
+      if (spinner) spinner.classList.add("hidden");
+    }
+  });
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const editId = urlParams.get("edit");
+if (editId) {
+  loadFileForEdit(editId);
 }

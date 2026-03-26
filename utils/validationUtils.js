@@ -8,6 +8,15 @@ const isBlank = (v) => v === null || v === undefined || String(v).trim() === "";
 const ALLOW_EMPTY_MANDATORY_FIELDS =
   (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() === "true";
 
+const normalizeNaftaFlag = (value) => {
+  if (value === null || value === undefined) return "";
+  const v = String(value).trim().toUpperCase();
+  if (v === "" || v === "NA" || v === "N/A" || v === "-") return "";
+  if (v === "Y" || v === "YES") return "Y";
+  if (v === "N" || v === "NO") return "N";
+  return v;
+};
+
 /**
  * Validates the integrity of parsed data against its schema specification.
  * Checks for mandatory fields, field length, and valid enum values.
@@ -60,7 +69,11 @@ const validateDataIntegrity = (data, documentType) => {
         const enumCodes = fieldSpec.possibleValues.map(
           (val) => val.split(/\s*=\s*/)[0]
         );
-        if (!enumCodes.includes(String(value).trim())) {
+        const valueToCheck =
+          fieldName === "NAFTA"
+            ? normalizeNaftaFlag(value)
+            : String(value).trim();
+        if (!enumCodes.includes(valueToCheck)) {
           errors.push({
             type: "Integrity Error",
             message: `Row ${rowNum}: Field "${fieldName}" has an invalid value "${value}". Expected one of: ${enumCodes.join(
@@ -213,7 +226,7 @@ const applyBusinessValidations = async (data, documentType) => {
       }
 
       // Regla existente: NAFTA => Preference Criterion obligatorio
-      const nafta = record["NAFTA"];
+      const nafta = normalizeNaftaFlag(record["NAFTA"]);
       const preferenceCriterion = record["Preference Criterion"];
       if (nafta === "Y" && isBlank(preferenceCriterion)) {
         errors.push({

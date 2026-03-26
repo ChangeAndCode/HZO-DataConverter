@@ -394,6 +394,7 @@ const createManualFile = async (req, res) => {
           lastDownloadedName:
             typeof outputFileName === "string" ? outputFileName : undefined,
           createdBy: req.user.id,
+          updatedBy: req.user.id,
           sourceJobId: newJob._id,
           rows: rowsToSave,
         });
@@ -459,7 +460,9 @@ const getAdminFilesByType = async (req, res) => {
     const docs = await FinishedProduct.find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(limit)
-      .select("adminFileName lastDownloadedName createdBy createdAt updatedAt")
+      .select(
+        "adminFileName lastDownloadedName createdBy updatedBy createdAt updatedAt",
+      )
       .lean();
 
     return res.status(200).json({ documents: docs });
@@ -468,6 +471,42 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(500).json({
       message: "Error interno del servidor al listar archivos.",
     });
+  }
+};
+
+const getAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+
+  if (!id) {
+    return res.status(400).json({ message: "id es requerido." });
+  }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "id invalido." });
+  }
+  if (type !== "finishedProduct") {
+    return res
+      .status(400)
+      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  }
+
+  try {
+    const doc = await FinishedProduct.findById(id).lean();
+    if (!doc) {
+      return res.status(404).json({ message: "Archivo no encontrado." });
+    }
+
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
+      return res.status(403).json({ message: "Acceso denegado." });
+    }
+
+    return res.status(200).json({ document: doc });
+  } catch (error) {
+    console.error("Error al obtener archivo admin:", error);
+    return res
+      .status(500)
+      .json({ message: "Error interno al obtener el archivo." });
   }
 };
 
@@ -542,6 +581,85 @@ const downloadAdminFileById = async (req, res) => {
   }
 };
 
+const updateAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+  const { rows, displayName } = req.body || {};
+
+  if (!id) {
+    return res.status(400).json({ message: "id es requerido." });
+  }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "id invalido." });
+  }
+  if (type !== "finishedProduct") {
+    return res
+      .status(400)
+      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  }
+  if (!Array.isArray(rows)) {
+    return res.status(400).json({ message: "rows debe ser un arreglo." });
+  }
+
+  try {
+    const doc = await FinishedProduct.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: "Archivo no encontrado." });
+    }
+
+    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
+    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
+      return res.status(403).json({ message: "Acceso denegado." });
+    }
+
+    const parsedData = { Sheet1: rows };
+    const transformedData = applyTransformations(parsedData, "finishedProduct");
+    const integrityResult = validateDataIntegrity(
+      transformedData,
+      "finishedProduct",
+    );
+    const errors = [...integrityResult.errors];
+
+    if (integrityResult.isValid) {
+      const businessResult = await applyBusinessValidations(
+        transformedData,
+        "finishedProduct",
+      );
+      if (!businessResult.isValid) {
+        errors.push(...businessResult.errors);
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        message: "Errores de validacion.",
+        errors,
+      });
+    }
+
+    const normalizedName =
+      typeof displayName === "string" ? displayName.trim() : "";
+    doc.adminFileName = normalizedName || doc.adminFileName;
+    doc.rows = Array.isArray(transformedData.Sheet1)
+      ? transformedData.Sheet1
+      : [];
+    doc.markModified("rows");
+    doc.updatedBy = req.user.id;
+
+    await doc.save();
+
+    return res.status(200).json({
+      message: "Archivo actualizado.",
+      updatedAt: doc.updatedAt,
+    });
+  } catch (error) {
+    console.error("Error al actualizar archivo admin:", error);
+    return res
+      .status(500)
+      .json({ message: "Error interno al actualizar el archivo." });
+  }
+};
+
 const deleteAdminFileById = async (req, res) => {
   const { id } = req.params;
   const { type } = req.query || {};
@@ -587,6 +705,8 @@ module.exports = {
   validateManualData,
   createManualFile,
   getAdminFilesByType,
+  getAdminFileById,
   downloadAdminFileById,
+  updateAdminFileById,
   deleteAdminFileById,
 };
