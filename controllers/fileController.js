@@ -596,7 +596,6 @@ const downloadAdminFileById = async (req, res) => {
         : type === "billOfMaterials"
           ? BillOfMaterials
           : FinishedProduct;
-  try {
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
