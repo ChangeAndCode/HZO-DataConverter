@@ -104,7 +104,7 @@
     });
   };
 
-  const renderDocuments = (docs) => {
+  const renderDocuments = (docs, docType) => {
     tableBody.innerHTML = "";
 
     if (!docs.length) {
@@ -142,14 +142,14 @@
       downloadBtn.className = "download-btn";
       downloadBtn.textContent = "D";
       downloadBtn.addEventListener("click", () => {
-        window.location.href = `/api/files/admin-files/${doc._id}/download?type=finishedProduct`;
+        window.location.href = `/api/files/admin-files/${doc._id}/download?type=${docType}`;
       });
 
       const updateBtn = document.createElement("button");
       updateBtn.type = "button";
       updateBtn.textContent = "A";
       updateBtn.addEventListener("click", () => {
-        window.location.href = `/file-creation?edit=${doc._id}`;
+        window.location.href = `/file-creation?edit=${doc._id}&type=${docType}`;
       });
 
       const deleteBtn = document.createElement("button");
@@ -223,7 +223,27 @@
         }
         const data = await response.json();
         const docs = Array.isArray(data.documents) ? data.documents : [];
-        renderDocuments(docs);
+        renderDocuments(docs, docType);
+      } catch (error) {
+        console.error("Error loading docs:", error);
+        renderEmpty("Error al cargar los archivos.");
+      }
+      return;
+    }
+
+    if (docType === "rawMaterial") {
+      try {
+        await loadUsers();
+        const response = await fetch(
+          "/api/files/admin-files?type=rawMaterial&limit=200"
+        );
+        if (!response.ok) {
+          renderEmpty("Error al cargar los archivos.");
+          return;
+        }
+        const data = await response.json();
+        const docs = Array.isArray(data.documents) ? data.documents : [];
+        renderDocuments(docs, docType);
       } catch (error) {
         console.error("Error loading docs:", error);
         renderEmpty("Error al cargar los archivos.");
@@ -266,7 +286,7 @@
     deleteConfirmBtn.addEventListener("click", () => {
       if (!pendingDeleteId) return;
       deleteConfirmBtn.disabled = true;
-      fetch(`/api/files/admin-files/${pendingDeleteId}?type=finishedProduct`, {
+      fetch(`/api/files/admin-files/${pendingDeleteId}?type=${currentDocType}`, {
         method: "DELETE",
       })
         .then((response) => {
