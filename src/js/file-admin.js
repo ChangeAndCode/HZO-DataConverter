@@ -251,6 +251,26 @@
       return;
     }
 
+    if (docType === "rawMaterial") {
+      try {
+        await loadUsers();
+        const response = await fetch(
+          "/api/files/admin-files?type=rawMaterial&limit=200"
+        );
+        if (!response.ok) {
+          renderEmpty("Error al cargar los archivos.");
+          return;
+        }
+        const data = await response.json();
+        const docs = Array.isArray(data.documents) ? data.documents : [];
+        renderDocuments(docs, docType);
+      } catch (error) {
+        console.error("Error loading docs:", error);
+        renderEmpty("Error al cargar los archivos.");
+      }
+      return;
+    }
+
     renderEmpty("Este tipo aun no esta habilitado.");
   };
 

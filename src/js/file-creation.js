@@ -426,7 +426,6 @@ function setBillOfMaterialsRows(rows = []) {
   list.forEach((row) => addBillOfMaterialsRow(row));
   updateTableScroll(bmBody);
 }
-
 // Utilidad para scroll interno en tablas si hay más de 6 filas
 function updateTableScroll(tbody) {
   if (!tbody) return;

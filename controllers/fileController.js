@@ -408,6 +408,23 @@ const createManualFile = async (req, res) => {
           console.log(
             `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
           );
+        } else if (documentType === "rawMaterial") {
+          const savedDoc = await RawMaterial.create({
+            adminFileName: adminFileName || undefined,
+            lastDownloadedName:
+              typeof outputFileName === "string" ? outputFileName : undefined,
+            createdBy: req.user.id,
+            updatedBy: req.user.id,
+            sourceJobId: newJob._id,
+            rows: rowsToSave,
+          });
+
+          savedCount = savedDoc ? 1 : 0;
+          savedDb = RawMaterial.db.name;
+          savedCollection = RawMaterial.collection.name;
+          console.log(
+            `[RawMaterial] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+          );
         } else if (documentType === "billOfMaterials") {
           const savedDoc = await BillOfMaterials.create({
             adminFileName: adminFileName || undefined,
@@ -467,9 +484,14 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(400).json({ message: "type es requerido." });
   }
 
-  if (type !== "finishedProduct" && type !== "billOfMaterials") {
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
     return res.status(400).json({
-      message: "Solo finishedProduct y billOfMaterials estan habilitados por ahora.",
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados por ahora.",
     });
   }
 
@@ -478,13 +500,19 @@ const getAdminFilesByType = async (req, res) => {
     const query = isAdmin ? {} : { createdBy: req.user.id };
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
-    const model = type === "billOfMaterials" ? BillOfMaterials : FinishedProduct;
-    const docs = await model.find(query)
+    const selectFields =
+      "adminFileName lastDownloadedName createdBy updatedBy createdAt updatedAt";
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
+    const docs = await model
+      .find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(limit)
-      .select(
-        "adminFileName lastDownloadedName createdBy updatedBy createdAt updatedAt",
-      )
+      .select(selectFields)
       .lean();
 
     return res.status(200).json({ documents: docs });
@@ -568,6 +596,7 @@ const downloadAdminFileById = async (req, res) => {
         : type === "billOfMaterials"
           ? BillOfMaterials
           : FinishedProduct;
+  try {
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
