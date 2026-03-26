@@ -573,7 +573,7 @@ function buildBillOfMaterialsTable() {
   updateTableScroll(bmBody);
 }
 
-function addBillOfMaterialsRow() {
+function addBillOfMaterialsRow(values = {}) {
   if (!bmBody) return;
   const row = document.createElement("tr");
 
@@ -584,6 +584,13 @@ function addBillOfMaterialsRow() {
     input.name = `billOfMaterials[${col.key}][]`;
     input.placeholder = col.label;
     if (col.maxLength) input.maxLength = col.maxLength;
+    const rawVal =
+      values && Object.prototype.hasOwnProperty.call(values, col.label)
+        ? values[col.label]
+        : "";
+    if (rawVal !== null && rawVal !== undefined) {
+      input.value = String(rawVal);
+    }
     if (col.required) input.required = true;
     if (
       col.key === "finishedGoodPartNumber" ||
