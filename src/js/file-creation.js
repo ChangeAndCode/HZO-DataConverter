@@ -403,6 +403,30 @@ function setFinishedProductRows(rows = []) {
   updateTableScroll(fpBody);
 }
 
+function setRawMaterialRows(rows = []) {
+  if (!rmBody) return;
+  if (!rmInitialized) {
+    buildRawMaterialTable();
+    rmInitialized = true;
+  }
+  rmBody.innerHTML = "";
+  const list = Array.isArray(rows) && rows.length ? rows : [{}];
+  list.forEach((row) => addRawMaterialRow(row));
+  updateTableScroll(rmBody);
+}
+
+function setBillOfMaterialsRows(rows = []) {
+  if (!bmBody) return;
+  if (!bmInitialized) {
+    buildBillOfMaterialsTable();
+    bmInitialized = true;
+  }
+  bmBody.innerHTML = "";
+  const list = Array.isArray(rows) && rows.length ? rows : [{}];
+  list.forEach((row) => addBillOfMaterialsRow(row));
+  updateTableScroll(bmBody);
+}
+
 // Utilidad para scroll interno en tablas si hay más de 6 filas
 function updateTableScroll(tbody) {
   if (!tbody) return;
@@ -417,7 +441,7 @@ function updateTableScroll(tbody) {
   }
 }
 
-function addRawMaterialRow() {
+function addRawMaterialRow(values = {}) {
   if (!rmBody) return;
   const row = document.createElement("tr");
 
@@ -428,6 +452,17 @@ function addRawMaterialRow() {
     input.name = `rawMaterial[${col.key}][]`;
     input.placeholder = col.label;
     if (col.maxLength) input.maxLength = col.maxLength;
+    const rawVal =
+      values && Object.prototype.hasOwnProperty.call(values, col.label)
+        ? values[col.label]
+        : "";
+    let displayVal = rawVal;
+    if (col.label === "License Expiration date") {
+      displayVal = formatYmdCompact(rawVal);
+    }
+    if (displayVal !== null && displayVal !== undefined) {
+      input.value = String(displayVal);
+    }
     if (col.required) input.required = true;
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
@@ -846,14 +881,18 @@ function showFormat(type) {
     document.getElementById(id).classList.remove("hidden");
   }
   if (adminFileNameGroup) {
-    if (type === 'finishedProduct') {
-      adminFileNameGroup.classList.remove('hidden');
+    if (
+      type === "finishedProduct" ||
+      type === "rawMaterial" ||
+      type === "billOfMaterials"
+    ) {
+      adminFileNameGroup.classList.remove("hidden");
     } else {
-      adminFileNameGroup.classList.add('hidden');
-      if (adminFileNameInput) adminFileNameInput.value = '';
+      adminFileNameGroup.classList.add("hidden");
+      if (adminFileNameInput) adminFileNameInput.value = "";
     }
   }
-  if (type === 'finishedProduct' && !fpInitialized) {
+  if (type === "finishedProduct" && !fpInitialized) {
     buildFinishedProductTable();
     fpInitialized = true;
   }
@@ -1077,11 +1116,20 @@ async function createManualFile(documentType, rows, displayName) {
   }
 }
 
-async function loadFileForEdit(docId) {
+async function loadFileForEdit(docId, docType) {
   if (!docId) return;
+  const targetType = docType || "finishedProduct";
+  if (
+    targetType !== "finishedProduct" &&
+    targetType !== "rawMaterial" &&
+    targetType !== "billOfMaterials"
+  ) {
+    renderErrorList([{ message: "Tipo de archivo invalido para editar." }]);
+    return;
+  }
   try {
     const response = await fetch(
-      `/api/files/admin-files/${docId}?type=finishedProduct`,
+      `/api/files/admin-files/${docId}?type=${targetType}`,
     );
     if (!response.ok) {
       throw new Error("No se pudo cargar el archivo.");
@@ -1094,10 +1142,10 @@ async function loadFileForEdit(docId) {
 
     editingFileId = doc._id;
     if (fileType) {
-      fileType.value = "finishedProduct";
+      fileType.value = targetType;
       fileType.disabled = true;
     }
-    showFormat("finishedProduct");
+    showFormat(targetType);
 
     if (adminFileNameGroup) {
       adminFileNameGroup.classList.remove("hidden");
@@ -1106,7 +1154,13 @@ async function loadFileForEdit(docId) {
       adminFileNameInput.value = doc.adminFileName || "";
     }
 
-    setFinishedProductRows(doc.rows || []);
+    if (targetType === "finishedProduct") {
+      setFinishedProductRows(doc.rows || []);
+    } else if (targetType === "rawMaterial") {
+      setRawMaterialRows(doc.rows || []);
+    } else if (targetType === "billOfMaterials") {
+      setBillOfMaterialsRows(doc.rows || []);
+    }
 
     if (createFileButton) createFileButton.classList.add("hidden");
     if (updateFileButton) updateFileButton.classList.remove("hidden");
@@ -1130,24 +1184,32 @@ if (createFileButton) {
       renderErrorList([{ message: "Selecciona un tipo de archivo." }]);
       return;
     }
-    if (fileType.value === 'finishedProduct') {
+    if (fileType.value === "finishedProduct") {
       const name =
         adminFileNameInput && adminFileNameInput.value
           ? adminFileNameInput.value.trim()
-          : '';
-      createManualFile('finishedProduct', collectFinishedProductRows(), name);
+          : "";
+      createManualFile("finishedProduct", collectFinishedProductRows(), name);
       return;
     }
-    if (fileType.value === 'rawMaterial') {
-      createManualFile('rawMaterial', collectRawMaterialRows(), '');
+    if (fileType.value === "rawMaterial") {
+      const name =
+        adminFileNameInput && adminFileNameInput.value
+          ? adminFileNameInput.value.trim()
+          : "";
+      createManualFile("rawMaterial", collectRawMaterialRows(), name);
       return;
     }
-    if (fileType.value === 'billOfMaterials') {
-      createManualFile('billOfMaterials', collectBillOfMaterialsRows(), '');
+    if (fileType.value === "billOfMaterials") {
+      const name =
+        adminFileNameInput && adminFileNameInput.value
+          ? adminFileNameInput.value.trim()
+          : "";
+      createManualFile("billOfMaterials", collectBillOfMaterialsRows(), name);
       return;
     }
-    if (fileType.value === 'splScrap') {
-      createManualFile('splScrap', collectSplScrapRows(), '');
+    if (fileType.value === "splScrap") {
+      createManualFile("splScrap", collectSplScrapRows(), "");
       return;
     }
     renderErrorList([
@@ -1159,12 +1221,26 @@ if (createFileButton) {
 if (updateFileButton) {
   updateFileButton.addEventListener("click", async () => {
     if (!editingFileId) return;
-    if (!fileType || fileType.value !== "finishedProduct") {
+    if (!fileType) {
+      renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
+      return;
+    }
+    const targetType = fileType.value;
+    if (
+      targetType !== "finishedProduct" &&
+      targetType !== "rawMaterial" &&
+      targetType !== "billOfMaterials"
+    ) {
       renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
       return;
     }
 
-    const rows = collectFinishedProductRows();
+    const rows =
+      targetType === "rawMaterial"
+        ? collectRawMaterialRows()
+        : targetType === "billOfMaterials"
+          ? collectBillOfMaterialsRows()
+          : collectFinishedProductRows();
     if (!rows.length) {
       renderErrorList([{ message: "No hay filas con datos para actualizar." }]);
       return;
@@ -1182,7 +1258,7 @@ if (updateFileButton) {
           ? adminFileNameInput.value.trim()
           : "";
       const response = await fetch(
-        `/api/files/admin-files/${editingFileId}?type=finishedProduct`,
+        `/api/files/admin-files/${editingFileId}?type=${targetType}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -1202,7 +1278,7 @@ if (updateFileButton) {
         }
         return;
       }
-      window.location.href = "/file-admin.html?type=finishedProduct";
+      window.location.href = `/file-admin.html?type=${targetType}`;
     } catch (err) {
       renderErrorList([{ message: err.message || "Error al actualizar." }]);
     } finally {
@@ -1215,6 +1291,7 @@ if (updateFileButton) {
 
 const urlParams = new URLSearchParams(window.location.search);
 const editId = urlParams.get("edit");
+const editType = urlParams.get("type");
 if (editId) {
-  loadFileForEdit(editId);
+  loadFileForEdit(editId, editType);
 }

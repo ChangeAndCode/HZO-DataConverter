@@ -15,6 +15,8 @@ const {
 } = require("../utils/validationUtils");
 const { applyTransformations } = require("../utils/transformationUtils");
 const FinishedProduct = require("../models/FinishedProduct");
+const BillOfMaterials = require("../models/BOM");
+const RawMaterial = require("../models/RawMaterial");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -382,29 +384,48 @@ const createManualFile = async (req, res) => {
     let savedCount = 0;
     let savedDb = "";
     let savedCollection = "";
-    if (documentType === "finishedProduct" && status === "completed") {
+    if (status === "completed") {
       const rowsToSave = Array.isArray(transformedRows) ? transformedRows : [];
       if (rowsToSave.length > 0) {
         const adminFileName =
           normalizedName ||
           (typeof outputFileName === "string" ? outputFileName : "");
 
-        const savedDoc = await FinishedProduct.create({
-          adminFileName: adminFileName || undefined,
-          lastDownloadedName:
-            typeof outputFileName === "string" ? outputFileName : undefined,
-          createdBy: req.user.id,
-          updatedBy: req.user.id,
-          sourceJobId: newJob._id,
-          rows: rowsToSave,
-        });
+        if (documentType === "finishedProduct") {
+          const savedDoc = await FinishedProduct.create({
+            adminFileName: adminFileName || undefined,
+            lastDownloadedName:
+              typeof outputFileName === "string" ? outputFileName : undefined,
+            createdBy: req.user.id,
+            updatedBy: req.user.id,
+            sourceJobId: newJob._id,
+            rows: rowsToSave,
+          });
 
-        savedCount = savedDoc ? 1 : 0;
-        savedDb = FinishedProduct.db.name;
-        savedCollection = FinishedProduct.collection.name;
-        console.log(
-          `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
-        );
+          savedCount = savedDoc ? 1 : 0;
+          savedDb = FinishedProduct.db.name;
+          savedCollection = FinishedProduct.collection.name;
+          console.log(
+            `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+          );
+        } else if (documentType === "billOfMaterials") {
+          const savedDoc = await BillOfMaterials.create({
+            adminFileName: adminFileName || undefined,
+            lastDownloadedName:
+              typeof outputFileName === "string" ? outputFileName : undefined,
+            createdBy: req.user.id,
+            updatedBy: req.user.id,
+            sourceJobId: newJob._id,
+            rows: rowsToSave,
+          });
+
+          savedCount = savedDoc ? 1 : 0;
+          savedDb = BillOfMaterials.db.name;
+          savedCollection = BillOfMaterials.collection.name;
+          console.log(
+            `[BOM] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+          );
+        }
       }
     }
 
@@ -446,9 +467,9 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(400).json({ message: "type es requerido." });
   }
 
-  if (type !== "finishedProduct") {
+  if (type !== "finishedProduct" && type !== "billOfMaterials") {
     return res.status(400).json({
-      message: "Solo finishedProduct esta habilitado por ahora.",
+      message: "Solo finishedProduct y billOfMaterials estan habilitados por ahora.",
     });
   }
 
@@ -457,7 +478,8 @@ const getAdminFilesByType = async (req, res) => {
     const query = isAdmin ? {} : { createdBy: req.user.id };
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
-    const docs = await FinishedProduct.find(query)
+    const model = type === "billOfMaterials" ? BillOfMaterials : FinishedProduct;
+    const docs = await model.find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(limit)
       .select(
@@ -484,14 +506,25 @@ const getAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct") {
-    return res
-      .status(400)
-      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
+    return res.status(400).json({
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+    });
   }
 
   try {
-    const doc = await FinishedProduct.findById(id).lean();
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
+    const doc = await model.findById(id).lean();
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
     }
@@ -517,14 +550,25 @@ const downloadAdminFileById = async (req, res) => {
   if (!id) {
     return res.status(400).json({ message: "id es requerido." });
   }
-  if (type !== "finishedProduct") {
-    return res
-      .status(400)
-      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
+    return res.status(400).json({
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+    });
   }
 
   try {
-    const doc = await FinishedProduct.findById(id);
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
+    const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
     }
@@ -548,7 +592,7 @@ const downloadAdminFileById = async (req, res) => {
     } = await fileConversionService.processManualDataForConversion(
       rowsToExport,
       null,
-      { documentType: "finishedProduct" }
+      { documentType: type }
     );
 
     if (status !== "completed" || !convertedFilePath) {
@@ -557,10 +601,13 @@ const downloadAdminFileById = async (req, res) => {
       });
     }
 
+    let fallbackName = "finishedProduct.txt";
+    if (type === "rawMaterial") fallbackName = "rawMaterial.txt";
+    if (type === "billOfMaterials") fallbackName = "billOfMaterials.txt";
     const nomenclature =
       typeof outputFileName === "string" && outputFileName
         ? outputFileName
-        : "finishedProduct.txt";
+        : fallbackName;
 
     doc.lastDownloadedName = nomenclature;
     await doc.save();
@@ -592,17 +639,28 @@ const updateAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct") {
-    return res
-      .status(400)
-      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
+    return res.status(400).json({
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+    });
   }
   if (!Array.isArray(rows)) {
     return res.status(400).json({ message: "rows debe ser un arreglo." });
   }
 
   try {
-    const doc = await FinishedProduct.findById(id);
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
+    const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
     }
@@ -613,17 +671,17 @@ const updateAdminFileById = async (req, res) => {
     }
 
     const parsedData = { Sheet1: rows };
-    const transformedData = applyTransformations(parsedData, "finishedProduct");
+    const transformedData = applyTransformations(parsedData, type);
     const integrityResult = validateDataIntegrity(
       transformedData,
-      "finishedProduct",
+      type,
     );
     const errors = [...integrityResult.errors];
 
     if (integrityResult.isValid) {
       const businessResult = await applyBusinessValidations(
         transformedData,
-        "finishedProduct",
+        type,
       );
       if (!businessResult.isValid) {
         errors.push(...businessResult.errors);
@@ -670,14 +728,25 @@ const deleteAdminFileById = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "id invalido." });
   }
-  if (type !== "finishedProduct") {
-    return res
-      .status(400)
-      .json({ message: "Solo finishedProduct esta habilitado por ahora." });
+  if (
+    type !== "finishedProduct" &&
+    type !== "rawMaterial" &&
+    type !== "billOfMaterials"
+  ) {
+    return res.status(400).json({
+      message:
+        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+    });
   }
 
   try {
-    const doc = await FinishedProduct.findById(id);
+    const model =
+      type === "rawMaterial"
+        ? RawMaterial
+        : type === "billOfMaterials"
+          ? BillOfMaterials
+          : FinishedProduct;
+    const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
     }
@@ -687,7 +756,7 @@ const deleteAdminFileById = async (req, res) => {
       return res.status(403).json({ message: "Acceso denegado." });
     }
 
-    await FinishedProduct.deleteOne({ _id: id });
+    await model.deleteOne({ _id: id });
     return res.status(200).json({ message: "Archivo eliminado." });
   } catch (error) {
     console.error("Error al borrar archivo admin:", error);
