@@ -446,6 +446,12 @@ h2 {
   box-sizing: border-box;
 }
 
+#bmTable td:first-child input[type='text'],
+#bmTable td:nth-child(2) input[type='text'],
+#bmTable td:nth-child(6) input[type='text'] {
+  width: 100%;
+}
+
 .row-remove-btn {
   background-color: #dc3545;
   color: white;
