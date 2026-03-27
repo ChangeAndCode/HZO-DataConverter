@@ -22,6 +22,15 @@ body {
   vertical-align: middle;
 }
 
+/* Centrar los iconos de acciones en la columna */
+.admin-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
 .download-btn {
   background: #28a745 !important;
 }
@@ -494,4 +503,11 @@ h2 {
 .table-wrapper::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
+}
+
+.admin-files-filters {
+  margin: 12px 0;
+  display: flex;
+  gap: 1%;
+  justify-content: space-between;
 }

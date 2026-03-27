@@ -211,7 +211,7 @@
       updateBtn.type = "button";
       updateBtn.className = "admin-action-btn update-btn";
       updateBtn.title = "Actualizar";
-      updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
+      updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
       updateBtn.addEventListener("click", () => {
         window.location.href = `/file-creation?edit=${doc._id}&type=${docType}`;
       });
@@ -298,7 +298,7 @@
       try {
         await loadUsers();
         const response = await fetch(
-          "/api/files/admin-files?type=billOfMaterials&limit=200"
+          "/api/files/admin-files?type=billOfMaterials&limit=200",
         );
         if (!response.ok) {
           renderEmpty("Error al cargar los archivos.");
@@ -318,7 +318,7 @@
       try {
         await loadUsers();
         const response = await fetch(
-          "/api/files/admin-files?type=rawMaterial&limit=200"
+          "/api/files/admin-files?type=rawMaterial&limit=200",
         );
         if (!response.ok) {
           renderEmpty("Error al cargar los archivos.");
@@ -369,9 +369,12 @@
     deleteConfirmBtn.addEventListener("click", () => {
       if (!pendingDeleteId) return;
       deleteConfirmBtn.disabled = true;
-      fetch(`/api/files/admin-files/${pendingDeleteId}?type=${currentDocType}`, {
-        method: "DELETE",
-      })
+      fetch(
+        `/api/files/admin-files/${pendingDeleteId}?type=${currentDocType}`,
+        {
+          method: "DELETE",
+        },
+      )
         .then((response) => {
           if (!response.ok) {
             throw new Error("No se pudo borrar el archivo.");
