@@ -1,10 +1,10 @@
-const fileType = document.getElementById('fileType');
-const sections = document.querySelectorAll('.format-section');
-const createFileButton = document.getElementById('createFileButton');
-const updateFileButton = document.getElementById('updateFileButton');
-const validationResult = document.getElementById('validationResult');
-const adminFileNameGroup = document.getElementById('adminFileNameGroup');
-const adminFileNameInput = document.getElementById('adminFileName');
+const fileType = document.getElementById("fileType");
+const sections = document.querySelectorAll(".format-section");
+const createFileButton = document.getElementById("createFileButton");
+const updateFileButton = document.getElementById("updateFileButton");
+const validationResult = document.getElementById("validationResult");
+const adminFileNameGroup = document.getElementById("adminFileNameGroup");
+const adminFileNameInput = document.getElementById("adminFileName");
 let editingFileId = "";
 
 const map = {
@@ -171,7 +171,12 @@ const splScrapMetaFields = [
   { key: "Waybill number", label: "Waybill number" },
   { key: "Total gross weight", label: "Total gross weight" },
   { key: "Total bundles", label: "Total bundles" },
-  { key: "regime", label: "Regime", required: false },
+  {
+    key: "Regime",
+    label: "Regime",
+    required: true,
+    options: ["Permanent", "Temporary"],
+  },
 ];
 
 const splScrapColumns = [
@@ -293,10 +298,7 @@ function addFinishedProductRow(values = {}) {
         ? values[col.label]
         : "";
     let displayVal = rawVal;
-    if (
-      col.label === "Period (From)" ||
-      col.label === "Period (To)"
-    ) {
+    if (col.label === "Period (From)" || col.label === "Period (To)") {
       displayVal = formatYmdCompact(rawVal);
     }
     if (displayVal !== null && displayVal !== undefined) {
@@ -311,8 +313,6 @@ function addFinishedProductRow(values = {}) {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      const allInputs = Array.from(fpBody.querySelectorAll("input"));
-      const idx = allInputs.indexOf(input);
       const rowInputs = Array.from(
         input.closest("tr").querySelectorAll("input"),
       );
@@ -320,36 +320,39 @@ function addFinishedProductRow(values = {}) {
         input.closest("tr"),
       );
       const col = rowInputs.indexOf(input);
-      if (e.key === "Enter" || e.key === "ArrowRight") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          // Si no es el último input, avanza al siguiente input de la fila
+          rowInputs[col + 1].focus();
+        } else {
+          // Si es el último input, ve al primer input de la siguiente fila (o crea una nueva)
+          if (row < fpBody.children.length - 1) {
+            const nextRowInputs = Array.from(
+              fpBody.children[row + 1].querySelectorAll("input"),
+            );
+            if (nextRowInputs[0]) nextRowInputs[0].focus();
+          } else {
+            addFinishedProductRow();
+            setTimeout(() => {
+              const newRowInputs = Array.from(
+                fpBody.children[fpBody.children.length - 1].querySelectorAll(
+                  "input",
+                ),
+              );
+              if (newRowInputs[0]) newRowInputs[0].focus();
+            }, 0);
+          }
+        }
+      } else if (e.key === "ArrowRight") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
           rowInputs[col + 1].focus();
-        } else if (row < fpBody.children.length - 1) {
-          const nextRowInputs = Array.from(
-            fpBody.children[row + 1].querySelectorAll("input"),
-          );
-          if (nextRowInputs[col]) nextRowInputs[col].focus();
-        } else if (e.key === "Enter" && row === fpBody.children.length - 1) {
-          addFinishedProductRow();
-          setTimeout(() => {
-            const newRowInputs = Array.from(
-              fpBody.children[fpBody.children.length - 1].querySelectorAll(
-                "input",
-              ),
-            );
-            if (newRowInputs[col]) newRowInputs[col].focus();
-          }, 0);
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (col > 0) {
           rowInputs[col - 1].focus();
-        } else if (row > 0) {
-          const prevRowInputs = Array.from(
-            fpBody.children[row - 1].querySelectorAll("input"),
-          );
-          if (prevRowInputs[prevRowInputs.length - 1])
-            prevRowInputs[prevRowInputs.length - 1].focus();
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -1228,7 +1231,9 @@ if (updateFileButton) {
   updateFileButton.addEventListener("click", async () => {
     if (!editingFileId) return;
     if (!fileType) {
-      renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
+      renderErrorList([
+        { message: "Tipo de archivo invalido para actualizar." },
+      ]);
       return;
     }
     const targetType = fileType.value;
@@ -1237,7 +1242,9 @@ if (updateFileButton) {
       targetType !== "rawMaterial" &&
       targetType !== "billOfMaterials"
     ) {
-      renderErrorList([{ message: "Tipo de archivo invalido para actualizar." }]);
+      renderErrorList([
+        { message: "Tipo de archivo invalido para actualizar." },
+      ]);
       return;
     }
 

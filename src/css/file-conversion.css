@@ -22,6 +22,15 @@ body {
   vertical-align: middle;
 }
 
+/* Centrar los iconos de acciones en la columna */
+.admin-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
 .download-btn {
   background: #28a745 !important;
 }
@@ -437,6 +446,12 @@ h2 {
   box-sizing: border-box;
 }
 
+#bmTable td:first-child input[type='text'],
+#bmTable td:nth-child(2) input[type='text'],
+#bmTable td:nth-child(6) input[type='text'] {
+  width: 100%;
+}
+
 .row-remove-btn {
   background-color: #dc3545;
   color: white;
@@ -494,4 +509,11 @@ h2 {
 .table-wrapper::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
+}
+
+.admin-files-filters {
+  margin: 12px 0;
+  display: flex;
+  gap: 1%;
+  justify-content: space-between;
 }
