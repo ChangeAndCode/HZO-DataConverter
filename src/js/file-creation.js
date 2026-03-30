@@ -323,10 +323,8 @@ function addFinishedProductRow(values = {}) {
       if (e.key === "Enter") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
-          // Si no es el último input, avanza al siguiente input de la fila
           rowInputs[col + 1].focus();
         } else {
-          // Si es el último input, ve al primer input de la siguiente fila (o crea una nueva)
           if (row < fpBody.children.length - 1) {
             const nextRowInputs = Array.from(
               fpBody.children[row + 1].querySelectorAll("input"),
@@ -473,8 +471,6 @@ function addRawMaterialRow(values = {}) {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      const allInputs = Array.from(rmBody.querySelectorAll("input"));
-      const idx = allInputs.indexOf(input);
       const rowInputs = Array.from(
         input.closest("tr").querySelectorAll("input"),
       );
@@ -482,36 +478,37 @@ function addRawMaterialRow(values = {}) {
         input.closest("tr"),
       );
       const col = rowInputs.indexOf(input);
-      if (e.key === "Enter" || e.key === "ArrowRight") {
+      if (e.key === "Enter") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
           rowInputs[col + 1].focus();
-        } else if (row < rmBody.children.length - 1) {
-          const nextRowInputs = Array.from(
-            rmBody.children[row + 1].querySelectorAll("input"),
-          );
-          if (nextRowInputs[col]) nextRowInputs[col].focus();
-        } else if (e.key === "Enter" && row === rmBody.children.length - 1) {
-          addRawMaterialRow();
-          setTimeout(() => {
-            const newRowInputs = Array.from(
-              rmBody.children[rmBody.children.length - 1].querySelectorAll(
-                "input",
-              ),
+        } else {
+          if (row < rmBody.children.length - 1) {
+            const nextRowInputs = Array.from(
+              rmBody.children[row + 1].querySelectorAll("input"),
             );
-            if (newRowInputs[col]) newRowInputs[col].focus();
-          }, 0);
+            if (nextRowInputs[0]) nextRowInputs[0].focus();
+          } else {
+            addRawMaterialRow();
+            setTimeout(() => {
+              const newRowInputs = Array.from(
+                rmBody.children[rmBody.children.length - 1].querySelectorAll(
+                  "input",
+                ),
+              );
+              if (newRowInputs[0]) newRowInputs[0].focus();
+            }, 0);
+          }
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (col > 0) {
           rowInputs[col - 1].focus();
-        } else if (row > 0) {
-          const prevRowInputs = Array.from(
-            rmBody.children[row - 1].querySelectorAll("input"),
-          );
-          if (prevRowInputs[prevRowInputs.length - 1])
-            prevRowInputs[prevRowInputs.length - 1].focus();
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -604,8 +601,6 @@ function addBillOfMaterialsRow(values = {}) {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      const allInputs = Array.from(bmBody.querySelectorAll("input"));
-      const idx = allInputs.indexOf(input);
       const rowInputs = Array.from(
         input.closest("tr").querySelectorAll("input"),
       );
@@ -613,36 +608,37 @@ function addBillOfMaterialsRow(values = {}) {
         input.closest("tr"),
       );
       const col = rowInputs.indexOf(input);
-      if (e.key === "Enter" || e.key === "ArrowRight") {
+      if (e.key === "Enter") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
           rowInputs[col + 1].focus();
-        } else if (row < bmBody.children.length - 1) {
-          const nextRowInputs = Array.from(
-            bmBody.children[row + 1].querySelectorAll("input"),
-          );
-          if (nextRowInputs[col]) nextRowInputs[col].focus();
-        } else if (e.key === "Enter" && row === bmBody.children.length - 1) {
-          addBillOfMaterialsRow();
-          setTimeout(() => {
-            const newRowInputs = Array.from(
-              bmBody.children[bmBody.children.length - 1].querySelectorAll(
-                "input",
-              ),
+        } else {
+          if (row < bmBody.children.length - 1) {
+            const nextRowInputs = Array.from(
+              bmBody.children[row + 1].querySelectorAll("input"),
             );
-            if (newRowInputs[col]) newRowInputs[col].focus();
-          }, 0);
+            if (nextRowInputs[0]) nextRowInputs[0].focus();
+          } else {
+            addBillOfMaterialsRow();
+            setTimeout(() => {
+              const newRowInputs = Array.from(
+                bmBody.children[bmBody.children.length - 1].querySelectorAll(
+                  "input",
+                ),
+              );
+              if (newRowInputs[0]) newRowInputs[0].focus();
+            }, 0);
+          }
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (col > 0) {
           rowInputs[col - 1].focus();
-        } else if (row > 0) {
-          const prevRowInputs = Array.from(
-            bmBody.children[row - 1].querySelectorAll("input"),
-          );
-          if (prevRowInputs[prevRowInputs.length - 1])
-            prevRowInputs[prevRowInputs.length - 1].focus();
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -803,8 +799,6 @@ function addSplScrapRow() {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      const allInputs = Array.from(splBody.querySelectorAll("input"));
-      const idx = allInputs.indexOf(input);
       const rowInputs = Array.from(
         input.closest("tr").querySelectorAll("input"),
       );
@@ -812,36 +806,37 @@ function addSplScrapRow() {
         input.closest("tr"),
       );
       const col = rowInputs.indexOf(input);
-      if (e.key === "Enter" || e.key === "ArrowRight") {
+      if (e.key === "Enter") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
           rowInputs[col + 1].focus();
-        } else if (row < splBody.children.length - 1) {
-          const nextRowInputs = Array.from(
-            splBody.children[row + 1].querySelectorAll("input"),
-          );
-          if (nextRowInputs[col]) nextRowInputs[col].focus();
-        } else if (e.key === "Enter" && row === splBody.children.length - 1) {
-          addSplScrapRow();
-          setTimeout(() => {
-            const newRowInputs = Array.from(
-              splBody.children[splBody.children.length - 1].querySelectorAll(
-                "input",
-              ),
+        } else {
+          if (row < splBody.children.length - 1) {
+            const nextRowInputs = Array.from(
+              splBody.children[row + 1].querySelectorAll("input"),
             );
-            if (newRowInputs[col]) newRowInputs[col].focus();
-          }, 0);
+            if (nextRowInputs[0]) nextRowInputs[0].focus();
+          } else {
+            addSplScrapRow();
+            setTimeout(() => {
+              const newRowInputs = Array.from(
+                splBody.children[splBody.children.length - 1].querySelectorAll(
+                  "input",
+                ),
+              );
+              if (newRowInputs[0]) newRowInputs[0].focus();
+            }, 0);
+          }
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (col < rowInputs.length - 1) {
+          rowInputs[col + 1].focus();
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (col > 0) {
           rowInputs[col - 1].focus();
-        } else if (row > 0) {
-          const prevRowInputs = Array.from(
-            splBody.children[row - 1].querySelectorAll("input"),
-          );
-          if (prevRowInputs[prevRowInputs.length - 1])
-            prevRowInputs[prevRowInputs.length - 1].focus();
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
