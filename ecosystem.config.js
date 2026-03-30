@@ -2,12 +2,13 @@
 module.exports = {
   apps: [
     {
-      name: "conmed-api",
+      name: "hzo-api",
       script: "./index.js",
       instances: 1,
       exec_mode: "fork",
       watch: false,
-      max_memory_restart: "500M",
+      max_memory_restart: "2G",
+      node_args: "--max-old-space-size=2048",
       restart_delay: 4000,
       max_restarts: 5,
       min_uptime: "10s",
