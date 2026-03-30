@@ -17,6 +17,7 @@ const { applyTransformations } = require("../utils/transformationUtils");
 const FinishedProduct = require("../models/FinishedProduct");
 const BillOfMaterials = require("../models/BOM");
 const RawMaterial = require("../models/RawMaterial");
+const SPLScrap = require("../models/SPLScrap");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -442,6 +443,23 @@ const createManualFile = async (req, res) => {
           console.log(
             `[BOM] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
           );
+        } else if (documentType === "splScrap") {
+          const savedDoc = await SPLScrap.create({
+            adminFileName: adminFileName || undefined,
+            lastDownloadedName:
+              typeof outputFileName === "string" ? outputFileName : undefined,
+            createdBy: req.user.id,
+            updatedBy: req.user.id,
+            sourceJobId: newJob._id,
+            rows: rowsToSave,
+          });
+
+          savedCount = savedDoc ? 1 : 0;
+          savedDb = SPLScrap.db.name;
+          savedCollection = SPLScrap.collection.name;
+          console.log(
+            `[SPLScrap] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+          );
         }
       }
     }
@@ -487,11 +505,12 @@ const getAdminFilesByType = async (req, res) => {
   if (
     type !== "finishedProduct" &&
     type !== "rawMaterial" &&
-    type !== "billOfMaterials"
+    type !== "billOfMaterials" &&
+    type !== "splScrap"
   ) {
     return res.status(400).json({
       message:
-        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados por ahora.",
+        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados por ahora.",
     });
   }
 
@@ -507,7 +526,9 @@ const getAdminFilesByType = async (req, res) => {
         ? RawMaterial
         : type === "billOfMaterials"
           ? BillOfMaterials
-          : FinishedProduct;
+          : type === "splScrap"
+            ? SPLScrap
+            : FinishedProduct;
     const docs = await model
       .find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
@@ -537,11 +558,12 @@ const getAdminFileById = async (req, res) => {
   if (
     type !== "finishedProduct" &&
     type !== "rawMaterial" &&
-    type !== "billOfMaterials"
+    type !== "billOfMaterials" &&
+    type !== "splScrap"
   ) {
     return res.status(400).json({
       message:
-        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
     });
   }
 
@@ -551,7 +573,9 @@ const getAdminFileById = async (req, res) => {
         ? RawMaterial
         : type === "billOfMaterials"
           ? BillOfMaterials
-          : FinishedProduct;
+          : type === "splScrap"
+            ? SPLScrap
+            : FinishedProduct;
     const doc = await model.findById(id).lean();
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -581,11 +605,12 @@ const downloadAdminFileById = async (req, res) => {
   if (
     type !== "finishedProduct" &&
     type !== "rawMaterial" &&
-    type !== "billOfMaterials"
+    type !== "billOfMaterials" &&
+    type !== "splScrap"
   ) {
     return res.status(400).json({
       message:
-        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
     });
   }
 
@@ -595,7 +620,9 @@ const downloadAdminFileById = async (req, res) => {
         ? RawMaterial
         : type === "billOfMaterials"
           ? BillOfMaterials
-          : FinishedProduct;
+          : type === "splScrap"
+            ? SPLScrap
+            : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -632,6 +659,7 @@ const downloadAdminFileById = async (req, res) => {
     let fallbackName = "finishedProduct.txt";
     if (type === "rawMaterial") fallbackName = "rawMaterial.txt";
     if (type === "billOfMaterials") fallbackName = "billOfMaterials.txt";
+    if (type === "splScrap") fallbackName = "splScrap.csv";
     const nomenclature =
       typeof outputFileName === "string" && outputFileName
         ? outputFileName
@@ -670,11 +698,12 @@ const updateAdminFileById = async (req, res) => {
   if (
     type !== "finishedProduct" &&
     type !== "rawMaterial" &&
-    type !== "billOfMaterials"
+    type !== "billOfMaterials" &&
+    type !== "splScrap"
   ) {
     return res.status(400).json({
       message:
-        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
     });
   }
   if (!Array.isArray(rows)) {
@@ -687,7 +716,9 @@ const updateAdminFileById = async (req, res) => {
         ? RawMaterial
         : type === "billOfMaterials"
           ? BillOfMaterials
-          : FinishedProduct;
+          : type === "splScrap"
+            ? SPLScrap
+            : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
@@ -759,11 +790,12 @@ const deleteAdminFileById = async (req, res) => {
   if (
     type !== "finishedProduct" &&
     type !== "rawMaterial" &&
-    type !== "billOfMaterials"
+    type !== "billOfMaterials" &&
+    type !== "splScrap"
   ) {
     return res.status(400).json({
       message:
-        "Solo finishedProduct, rawMaterial y billOfMaterials estan habilitados.",
+        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
     });
   }
 
@@ -773,7 +805,9 @@ const deleteAdminFileById = async (req, res) => {
         ? RawMaterial
         : type === "billOfMaterials"
           ? BillOfMaterials
-          : FinishedProduct;
+          : type === "splScrap"
+            ? SPLScrap
+            : FinishedProduct;
     const doc = await model.findById(id);
     if (!doc) {
       return res.status(404).json({ message: "Archivo no encontrado." });
