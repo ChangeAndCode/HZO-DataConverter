@@ -236,8 +236,16 @@
     allFilesList = docs; // <-- Solo se actualiza aquí
     // Ordenar alfabéticamente por adminFileName o lastDownloadedName
     let docsToRender = [...docs].sort((a, b) => {
-      const aName = (a.adminFileName || a.lastDownloadedName || "").toLowerCase();
-      const bName = (b.adminFileName || b.lastDownloadedName || "").toLowerCase();
+      const aName = (
+        a.adminFileName ||
+        a.lastDownloadedName ||
+        ""
+      ).toLowerCase();
+      const bName = (
+        b.adminFileName ||
+        b.lastDownloadedName ||
+        ""
+      ).toLowerCase();
       return aName.localeCompare(bName);
     });
     renderFilteredDocuments(docsToRender);
