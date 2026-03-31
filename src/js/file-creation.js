@@ -311,6 +311,19 @@ function addFinishedProductRow(values = {}) {
         input.value = input.value.toUpperCase();
       });
     }
+    // Autoformato para HTS Code (finishedProduct)
+    if (col.key === "usaImportHts" || col.key === "usaExportCode") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        if (val.length <= 10) {
+          let formatted = val;
+          if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+          if (val.length > 6)
+            formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+          input.value = formatted;
+        }
+      });
+    }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
       const rowInputs = Array.from(
@@ -467,6 +480,19 @@ function addRawMaterialRow(values = {}) {
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
+      });
+    }
+    // Autoformato para HTS Code (rawMaterial)
+    if (col.key === "importHts" || col.key === "exportHts") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        if (val.length <= 10) {
+          let formatted = val;
+          if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+          if (val.length > 6)
+            formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+          input.value = formatted;
+        }
       });
     }
     // Navegación por teclado con Enter
@@ -795,6 +821,19 @@ function addSplScrapRow() {
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
+      });
+    }
+    // Autoformato para HTS Code (packing list SPL/Scrap)
+    if (col.key === "usImpHts" || col.key === "usExpHts") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        if (val.length <= 10) {
+          let formatted = val;
+          if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+          if (val.length > 6)
+            formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+          input.value = formatted;
+        }
       });
     }
     // Navegación por teclado con Enter

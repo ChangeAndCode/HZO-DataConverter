@@ -134,6 +134,45 @@
     },
   );
 
+  // Ordenar por abecedario con botón de flechas
+  let sortNombreAsc = true;
+  const sortNombreBtn = document.getElementById("sortNombreBtn");
+  if (sortNombreBtn) {
+    sortNombreBtn.addEventListener("click", () => {
+      sortNombreAsc = !sortNombreAsc;
+      // Cambia el SVG según el orden
+      sortNombreBtn.innerHTML = sortNombreAsc
+        ? `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 14l3 3 3-3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 6l3-3 3 3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+        : `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 6l3-3 3 3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 14l3 3 3-3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      renderSortedDocuments();
+    });
+  }
+
+  function renderSortedDocuments() {
+    let docs = allFilesList.slice();
+    docs.sort((a, b) => {
+      const aName = (a.adminFileName || a.fileName || "").toLowerCase();
+      const bName = (b.adminFileName || b.fileName || "").toLowerCase();
+      return sortNombreAsc
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName);
+    });
+    renderFilteredDocuments(docs);
+  }
+
+  // Resetear Filtros
+  const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", () => {
+      [filterNombre, filterNomenclatura, filterFecha, filterUsuario].forEach(
+        (input) => {
+          if (input) input.value = "";
+        },
+      );
+      applyColumnFilters();
+    });
+  }
+
   if (!typeSelect || !panel || !tableBody) return;
   let currentDocType = "";
   let pendingDeleteId = "";

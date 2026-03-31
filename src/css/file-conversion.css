@@ -1,3 +1,32 @@
+/* Placeholder opaco para inputs de file-admin */
+.admin-files-filters input::placeholder {
+  color: #888;
+  opacity: 0.55;
+}
+
+/* Fila de acciones en creación de archivos */
+.creation-actions-row {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 32px;
+  margin-bottom: 18px;
+}
+
+.creation-actions-row button,
+.creation-actions-row .button {
+  min-width: 170px;
+  height: 48px;
+  margin: 0;
+  padding: 0 24px;
+  font-size: 1em;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* file-conversion.css */
 body {
   background-color: #e6f7ff;
@@ -101,6 +130,68 @@ body {
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* Botón de orden alfabético en filtro de nombre */
+.sort-btn {
+  background: #f5f8fb;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sort-btn:hover,
+.sort-btn:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.12);
+  outline: none;
+}
+
+/* Botón reset de filtros en admin panel */
+.button-reset {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 123, 255, 0.18);
+  width: 100%;
+  min-width: 120px;
+  max-width: 180px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  margin: 0;
+  transition: background-color 0.2s, box-shadow 0.2s, font-weight 0.2s;
+}
+
+.button-reset:hover,
+.button-reset:focus {
+  background-color: #0056b3;
+  font-weight: 600;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.28);
+  outline: none;
+}
+
+.admin-box-filters> :last-child.button-reset {
+  align-self: stretch !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* Conversion Result Box Styles */
