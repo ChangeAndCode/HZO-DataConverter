@@ -1,13 +1,23 @@
 // models/SPLScrap.js
 const mongoose = require("mongoose");
 
+const ALLOW_EMPTY_MANDATORY_FIELDS =
+  (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() ===
+  "true";
+// We store one document per file (rows in an array), so top-level required
+// fields should not block inserts.
+const STORE_SPLSCRAP_AS_FILE_DOC = true;
+
 /**
  * convierte la especificación de campo (tipo A/N/D,
  * requirement M/A/O, enum de posibles valores) a un campo de Mongoose.
  */
 const createSchemaField = (fieldSpec) => {
   let type;
-  const required = fieldSpec.requirement === "M";
+  const required =
+    fieldSpec.requirement === "M" &&
+    !ALLOW_EMPTY_MANDATORY_FIELDS &&
+    !STORE_SPLSCRAP_AS_FILE_DOC;
 
   switch (fieldSpec.type) {
     case "A":
@@ -37,6 +47,9 @@ const createSchemaField = (fieldSpec) => {
       const parts = val.split(/\s*=\s*/);
       return parts[0];
     });
+    if (!required) {
+      enumValues.push("");
+    }
     schemaField.enum = enumValues;
   }
 
@@ -504,11 +517,24 @@ let splScrapSchemaSpec = [
   });
 })();
 
-const splScrapMongooseSchema = new mongoose.Schema({});
+const splScrapMongooseSchema = new mongoose.Schema(
+  {},
+  { timestamps: true }
+);
 
 // Añade los campos al schema de Mongoose
 splScrapSchemaSpec.forEach((field) => {
   splScrapMongooseSchema.add({ [field.dataElement]: createSchemaField(field) });
+});
+
+// Metadata for admin listing
+splScrapMongooseSchema.add({
+  adminFileName: { type: String, trim: true },
+  lastDownloadedName: { type: String, trim: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  sourceJobId: { type: mongoose.Schema.Types.ObjectId, ref: "ConversionJob" },
+  rows: { type: [mongoose.Schema.Types.Mixed], default: [] },
 });
 
 // Exponer la especificación para tu conversor

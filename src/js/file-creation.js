@@ -219,9 +219,9 @@ const splScrapMetaFields = [
     label: "Expected date of arrival",
     required: true,
     inputType: "text",
-    placeholder: "YYYY-MM-DD",
-    pattern: "\\d{4}-\\d{2}-\\d{2}",
-    title: "Fecha en formato YYYY-MM-DD",
+    placeholder: "YYYYMMDD",
+    pattern: "\\d{8}",
+    title: "Fecha en formato YYYYMMDD",
   },
   { key: "Waybill number", label: "Waybill number" },
   { key: "Total gross weight", label: "Total gross weight" },
@@ -526,6 +526,34 @@ function setBillOfMaterialsRows(rows = []) {
   list.forEach((row) => addBillOfMaterialsRow(row));
   updateTableScroll(bmBody);
 }
+
+function setSplScrapRows(rows = []) {
+  if (!splBody || !splMetaContainer) return;
+  if (!splInitialized) {
+    buildSplScrapMetaFields();
+    buildSplScrapTable();
+    splInitialized = true;
+  }
+
+  const list = Array.isArray(rows) && rows.length ? rows : [{}];
+  const firstRow = list[0] || {};
+  splScrapMetaFields.forEach((field) => {
+    const input = splMetaInputs[field.key];
+    if (!input) return;
+    const value = firstRow[field.key];
+    if (field.key === "Expected date of arrival") {
+      input.value =
+        value !== undefined && value !== null ? formatYmdCompact(value) : "";
+      input.value = formatYmdDigits(input.value);
+      return;
+    }
+    input.value = value !== undefined && value !== null ? String(value) : "";
+  });
+
+  splBody.innerHTML = "";
+  list.forEach((row) => addSplScrapRow(row));
+  updateTableScroll(splBody);
+}
 // Utilidad para scroll interno en tablas si hay más de 6 filas
 function updateTableScroll(tbody) {
   if (!tbody) return;
@@ -810,6 +838,13 @@ function formatYmd(value) {
   return out;
 }
 
+function formatYmdDigits(value) {
+  const digits = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 8);
+  return digits;
+}
+
 function formatYmdCompact(value) {
   if (value === null || value === undefined || value === "") return "";
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -867,12 +902,12 @@ function buildSplScrapMetaFields() {
     if (field.placeholder) input.placeholder = field.placeholder;
     if (field.pattern) input.setAttribute("pattern", field.pattern);
     if (field.title) input.title = field.title;
-    if (field.key === "Expected date of arrival") {
-      input.maxLength = 10;
-      input.addEventListener("input", (e) => {
-        e.target.value = formatYmd(e.target.value);
-      });
-    }
+      if (field.key === "Expected date of arrival") {
+        input.maxLength = 8;
+        input.addEventListener("input", (e) => {
+          e.target.value = formatYmdDigits(e.target.value);
+        });
+      }
 
     wrapper.appendChild(label);
     wrapper.appendChild(input);
@@ -909,7 +944,7 @@ function buildSplScrapTable() {
   updateTableScroll(splBody);
 }
 
-function addSplScrapRow() {
+function addSplScrapRow(values = {}) {
   if (!splBody) return;
   const row = document.createElement("tr");
 
@@ -921,6 +956,15 @@ function addSplScrapRow() {
     input.placeholder = col.label;
     if (col.maxLength) input.maxLength = col.maxLength;
     if (col.required) input.required = true;
+    const initialValue =
+      col.label && values && values[col.label] !== undefined
+        ? values[col.label]
+        : values && values[col.key] !== undefined
+          ? values[col.key]
+          : "";
+    if (initialValue !== undefined && initialValue !== null) {
+      input.value = String(initialValue);
+    }
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
@@ -1025,14 +1069,15 @@ function showFormat(type) {
   if (id) {
     document.getElementById(id).classList.remove("hidden");
   }
-  if (adminFileNameGroup) {
-    if (
-      type === "finishedProduct" ||
-      type === "rawMaterial" ||
-      type === "billOfMaterials"
-    ) {
-      adminFileNameGroup.classList.remove("hidden");
-    } else {
+    if (adminFileNameGroup) {
+      if (
+        type === "finishedProduct" ||
+        type === "rawMaterial" ||
+        type === "billOfMaterials" ||
+        type === "splScrap"
+      ) {
+        adminFileNameGroup.classList.remove("hidden");
+      } else {
       adminFileNameGroup.classList.add("hidden");
       if (adminFileNameInput) adminFileNameInput.value = "";
     }
@@ -1264,14 +1309,15 @@ async function createManualFile(documentType, rows, displayName) {
 async function loadFileForEdit(docId, docType) {
   if (!docId) return;
   const targetType = docType || "finishedProduct";
-  if (
-    targetType !== "finishedProduct" &&
-    targetType !== "rawMaterial" &&
-    targetType !== "billOfMaterials"
-  ) {
-    renderErrorList([{ message: "Tipo de archivo invalido para editar." }]);
-    return;
-  }
+    if (
+      targetType !== "finishedProduct" &&
+      targetType !== "rawMaterial" &&
+      targetType !== "billOfMaterials" &&
+      targetType !== "splScrap"
+    ) {
+      renderErrorList([{ message: "Tipo de archivo invalido para editar." }]);
+      return;
+    }
   try {
     const response = await fetch(
       `/api/files/admin-files/${docId}?type=${targetType}`,
@@ -1299,13 +1345,15 @@ async function loadFileForEdit(docId, docType) {
       adminFileNameInput.value = doc.adminFileName || "";
     }
 
-    if (targetType === "finishedProduct") {
-      setFinishedProductRows(doc.rows || []);
-    } else if (targetType === "rawMaterial") {
-      setRawMaterialRows(doc.rows || []);
-    } else if (targetType === "billOfMaterials") {
-      setBillOfMaterialsRows(doc.rows || []);
-    }
+      if (targetType === "finishedProduct") {
+        setFinishedProductRows(doc.rows || []);
+      } else if (targetType === "rawMaterial") {
+        setRawMaterialRows(doc.rows || []);
+      } else if (targetType === "billOfMaterials") {
+        setBillOfMaterialsRows(doc.rows || []);
+      } else if (targetType === "splScrap") {
+        setSplScrapRows(doc.rows || []);
+      }
 
     if (createFileButton) createFileButton.classList.add("hidden");
     if (updateFileButton) updateFileButton.classList.remove("hidden");
@@ -1353,10 +1401,14 @@ if (createFileButton) {
       createManualFile("billOfMaterials", collectBillOfMaterialsRows(), name);
       return;
     }
-    if (fileType.value === "splScrap") {
-      createManualFile("splScrap", collectSplScrapRows(), "");
-      return;
-    }
+      if (fileType.value === "splScrap") {
+        const name =
+          adminFileNameInput && adminFileNameInput.value
+            ? adminFileNameInput.value.trim()
+            : "";
+        createManualFile("splScrap", collectSplScrapRows(), name);
+        return;
+      }
     renderErrorList([
       { message: "Este tipo a\u00fan no est\u00e1 disponible." },
     ]);
@@ -1373,23 +1425,26 @@ if (updateFileButton) {
       return;
     }
     const targetType = fileType.value;
-    if (
-      targetType !== "finishedProduct" &&
-      targetType !== "rawMaterial" &&
-      targetType !== "billOfMaterials"
-    ) {
-      renderErrorList([
-        { message: "Tipo de archivo invalido para actualizar." },
-      ]);
-      return;
-    }
+      if (
+        targetType !== "finishedProduct" &&
+        targetType !== "rawMaterial" &&
+        targetType !== "billOfMaterials" &&
+        targetType !== "splScrap"
+      ) {
+        renderErrorList([
+          { message: "Tipo de archivo invalido para actualizar." },
+        ]);
+        return;
+      }
 
-    const rows =
-      targetType === "rawMaterial"
-        ? collectRawMaterialRows()
-        : targetType === "billOfMaterials"
-          ? collectBillOfMaterialsRows()
-          : collectFinishedProductRows();
+      const rows =
+        targetType === "rawMaterial"
+          ? collectRawMaterialRows()
+          : targetType === "billOfMaterials"
+            ? collectBillOfMaterialsRows()
+            : targetType === "splScrap"
+              ? collectSplScrapRows()
+              : collectFinishedProductRows();
     if (!rows.length) {
       renderErrorList([{ message: "No hay filas con datos para actualizar." }]);
       return;
