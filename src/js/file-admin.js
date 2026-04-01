@@ -135,28 +135,49 @@
   );
 
   // Ordenar por abecedario con botón de flechas
-  let sortNombreAsc = true;
+  // 0: por fecha (desc, flechas juntas), 1: alfabético asc (flecha arriba), 2: alfabético desc (flecha abajo)
+  let sortMode = 0;
   const sortNombreBtn = document.getElementById("sortNombreBtn");
   const sortNombreIcon = document.getElementById("sortNombreIcon");
   if (sortNombreBtn && sortNombreIcon) {
     sortNombreBtn.addEventListener("click", () => {
-      sortNombreAsc = !sortNombreAsc;
-      sortNombreIcon.src = sortNombreAsc
-        ? "../icons/flecha-hacia-arriba.png"
-        : "../icons/flecha-hacia-abajo.png";
+      sortMode = (sortMode + 1) % 3;
+      if (sortMode === 0) {
+        sortNombreIcon.src =
+          "/src/icons/ordenar-flechas-par-apuntando-hacia-arriba-y-hacia-abajo.png";
+      } else if (sortMode === 1) {
+        sortNombreIcon.src = "/src/icons/caret-flecha-hacia-arriba.png";
+      } else {
+        sortNombreIcon.src = "/src/icons/caret-abajo.png";
+      }
       renderSortedDocuments();
     });
   }
 
   function renderSortedDocuments() {
     let docs = allFilesList.slice();
-    docs.sort((a, b) => {
-      const aName = (a.adminFileName || a.fileName || "").toLowerCase();
-      const bName = (b.adminFileName || b.fileName || "").toLowerCase();
-      return sortNombreAsc
-        ? aName.localeCompare(bName)
-        : bName.localeCompare(aName);
-    });
+    if (sortMode === 0) {
+      // Por fecha descendente (más reciente arriba)
+      docs.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bDate - aDate;
+      });
+    } else if (sortMode === 1) {
+      // Alfabético ascendente
+      docs.sort((a, b) => {
+        const aName = (a.adminFileName || a.fileName || "").toLowerCase();
+        const bName = (b.adminFileName || b.fileName || "").toLowerCase();
+        return aName.localeCompare(bName);
+      });
+    } else {
+      // Alfabético descendente
+      docs.sort((a, b) => {
+        const aName = (a.adminFileName || a.fileName || "").toLowerCase();
+        const bName = (b.adminFileName || b.fileName || "").toLowerCase();
+        return bName.localeCompare(aName);
+      });
+    }
     renderFilteredDocuments(docs);
   }
 
@@ -272,22 +293,13 @@
   };
 
   const renderDocuments = (docs, docType) => {
-    allFilesList = docs; // <-- Solo se actualiza aquí
-    // Ordenar alfabéticamente por adminFileName o lastDownloadedName
-    let docsToRender = [...docs].sort((a, b) => {
-      const aName = (
-        a.adminFileName ||
-        a.lastDownloadedName ||
-        ""
-      ).toLowerCase();
-      const bName = (
-        b.adminFileName ||
-        b.lastDownloadedName ||
-        ""
-      ).toLowerCase();
-      return aName.localeCompare(bName);
-    });
-    renderFilteredDocuments(docsToRender);
+    allFilesList = docs;
+    // Por defecto: modo 0 (fecha descendente, flechas dobles)
+    sortMode = 0;
+    if (sortNombreIcon)
+      sortNombreIcon.src =
+        "/src/icons/ordenar-flechas-par-apuntando-hacia-arriba-y-hacia-abajo.png";
+    renderSortedDocuments();
   };
 
   const loadUsers = async () => {

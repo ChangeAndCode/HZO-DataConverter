@@ -40,7 +40,7 @@ const PORT = process.env.PORT || 3001;
 console.log(PORT);
 
 // Servir la carpeta de íconos como estática
-app.use("/icons", express.static(path.join(__dirname, "src", "icons")));
+app.use("/src/icons", express.static(path.join(__dirname, "src/icons")));
 
 // Trust reverse proxy (needed for secure cookies behind TLS terminators)
 app.set("trust proxy", 1);
