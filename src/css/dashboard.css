@@ -74,16 +74,16 @@ p strong {
 }
 
 .tab-pane.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
   /* Show active tab */
 }
 
 .info-section,
 .action-section {
-  margin-top: 20px;
+  margin: 20px auto;
   padding-top: 20px;
   border-top: 1px solid #eee;
-  text-align: left;
 }
 
 .info-section h2,

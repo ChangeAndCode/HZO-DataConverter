@@ -16,15 +16,50 @@ const map = {
 
 const finishedProductColumns = [
   { key: "partNumber", label: "Part Number", maxLength: 30, required: true },
-  { key: "description", label: "Description" },
-  { key: "unitWeightLb", label: "Unit Weight Lb." },
-  { key: "dutiableValueUsd", label: "Dutiable Value (USD)" },
+  { key: "description", label: "Description", maxLength: 60, required: true },
+  {
+    key: "unitWeightLb",
+    label: "Unit Weight Lb.",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "dutiableValueUsd",
+    label: "Dutiable Value (USD)",
+    maxLength: 17,
+    required: true,
+  },
   { key: "filler", label: "Filler" },
-  { key: "addedValueUsd", label: "Added Value (USD)" },
-  { key: "unitOfMeasure", label: "Unit of Measure" },
-  { key: "countryOfOrigin", label: "Country of Origin" },
-  { key: "usaImportHts", label: "USA Importation HTS Code" },
-  { key: "usaExportCode", label: "USA Exportation Code" },
+  {
+    key: "addedValueUsd",
+    label: "Added Value (USD)",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "unitOfMeasure",
+    label: "Unit of Measure",
+    maxLength: 3,
+    required: true,
+  },
+  {
+    key: "countryOfOrigin",
+    label: "Country of Origin",
+    maxLength: 2,
+    required: true,
+  },
+  {
+    key: "usaImportHts",
+    label: "USA Importation HTS Code",
+    maxLength: 12,
+    required: true,
+  },
+  {
+    key: "usaExportCode",
+    label: "USA Exportation Code",
+    maxLength: 12,
+    required: true,
+  },
   { key: "FDA Product Code", label: "FDA Product Code" },
   { key: "FDA Storage", label: "FDA Storage" },
   { key: "FDA Country of Origin", label: "FDA Country of Origin" },
@@ -89,8 +124,18 @@ const finishedProductColumns = [
 const rawMaterialColumns = [
   { key: "partNumber", label: "Part Number", maxLength: 30, required: true },
   { key: "description", label: "Description", maxLength: 60, required: true },
-  { key: "unitWeightLb", label: "Unit Weight Lb.", required: true },
-  { key: "unitCostUsd", label: "Unit Cost (USD)", required: true },
+  {
+    key: "unitWeightLb",
+    label: "Unit Weight Lb.",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "unitCostUsd",
+    label: "Unit Cost (USD)",
+    maxLength: 17,
+    required: true,
+  },
   {
     key: "unitOfMeasure",
     label: "Unit of measure",
@@ -103,9 +148,19 @@ const rawMaterialColumns = [
     maxLength: 2,
     required: true,
   },
-  { key: "importHts", label: "Importation HTS Code", required: true },
-  { key: "exportHts", label: "Exportation HTS Code", required: true },
-  { key: "eccn", label: "ECCN", required: true },
+  {
+    key: "importHts",
+    label: "Importation HTS Code",
+    maxLength: 12,
+    required: true,
+  },
+  {
+    key: "exportHts",
+    label: "Exportation HTS Code",
+    maxLength: 12,
+    required: true,
+  },
+  { key: "eccn", label: "ECCN", maxLength: 10, required: true },
   { key: "filler", label: "Filler" },
   { key: "licenseNumber", label: "License Number (LCN)" },
   { key: "licenseException", label: "License Exception" },
@@ -127,7 +182,7 @@ const billOfMaterialsColumns = [
     required: true,
   },
   { key: "type", label: "Type", maxLength: 1, required: true },
-  { key: "quantity", label: "Quantity", required: true },
+  { key: "quantity", label: "Quantity", maxLength: 17, required: true },
   {
     key: "unitOfMeasure",
     label: "Unit of Measure",
@@ -182,28 +237,48 @@ const splScrapMetaFields = [
 const splScrapColumns = [
   { key: "partNumber", label: "Part Number", maxLength: 30, required: true },
   { key: "description", label: "Description", maxLength: 60, required: true },
-  { key: "quantity", label: "Quantity", required: true },
+  { key: "quantity", label: "Quantity", maxLength: 17, required: true },
   {
     key: "unitOfMeasure",
     label: "Unit Of Measure",
     maxLength: 3,
     required: true,
   },
-  { key: "unitValueUsd", label: "Unit Value (USD)", required: true },
-  { key: "addedValueUsd", label: "Added Value (USD)", required: true },
-  { key: "totalValueUsd", label: "Total Value (USD)", required: true },
-  { key: "unitNetWeight", label: "Unit Net Weight", required: true },
+  {
+    key: "unitValueUsd",
+    label: "Unit Value (USD)",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "addedValueUsd",
+    label: "Added Value (USD)",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "totalValueUsd",
+    label: "Total Value (USD)",
+    maxLength: 17,
+    required: true,
+  },
+  {
+    key: "unitNetWeight",
+    label: "Unit Net Weight",
+    maxLength: 17,
+    required: true,
+  },
   {
     key: "countryOfOrigin",
     label: "Country of Origin",
     maxLength: 2,
     required: true,
   },
-  { key: "eccn", label: "ECCN", required: true },
+  { key: "eccn", label: "ECCN", maxLength: 10, required: true },
   { key: "licenseNo", label: "License No." },
   { key: "licenseException", label: "License Exception" },
-  { key: "usImpHts", label: "US IMP HTS Code", required: true },
-  { key: "usExpHts", label: "US EXP HTS Code", required: true },
+  { key: "usImpHts", label: "US IMP HTS Code", maxLength: 16, required: true },
+  { key: "usExpHts", label: "US EXP HTS Code", maxLength: 16, required: true },
   { key: "brand", label: "Brand" },
   { key: "model", label: "Model" },
   { key: "serial", label: "Serial" },
@@ -247,6 +322,12 @@ function buildFinishedProductTable() {
   finishedProductColumns.forEach((col) => {
     const th = document.createElement("th");
     th.textContent = col.label;
+    if (col.required) {
+      const asterisk = document.createElement("span");
+      asterisk.className = "required-asterisk";
+      asterisk.textContent = " *";
+      th.appendChild(asterisk);
+    }
     headerRow.appendChild(th);
   });
   const actionsTh = document.createElement("th");
@@ -269,6 +350,12 @@ function buildRawMaterialTable() {
   rawMaterialColumns.forEach((col) => {
     const th = document.createElement("th");
     th.textContent = col.label;
+    if (col.required) {
+      const asterisk = document.createElement("span");
+      asterisk.className = "required-asterisk";
+      asterisk.textContent = " *";
+      th.appendChild(asterisk);
+    }
     headerRow.appendChild(th);
   });
   const actionsTh = document.createElement("th");
@@ -309,6 +396,18 @@ function addFinishedProductRow(values = {}) {
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
+      });
+    }
+    // Autoformato y límite estricto para HTS Code (finishedProduct)
+    if (col.key === "usaImportHts" || col.key === "usaExportCode") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        let formatted = val;
+        if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+        if (val.length > 6)
+          formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+        // Limitar a 12 caracteres exactos xxxx.xx.xxxx
+        input.value = formatted.slice(0, 12);
       });
     }
     // Navegación por teclado con Enter
@@ -469,6 +568,18 @@ function addRawMaterialRow(values = {}) {
         input.value = input.value.toUpperCase();
       });
     }
+    // Autoformato y límite estricto para HTS Code (rawMaterial)
+    if (col.key === "importHts" || col.key === "exportHts") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        let formatted = val;
+        if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+        if (val.length > 6)
+          formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+        // Limitar a 12 caracteres exactos xxxx.xx.xxxx
+        input.value = formatted.slice(0, 12);
+      });
+    }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
       const rowInputs = Array.from(
@@ -558,6 +669,12 @@ function buildBillOfMaterialsTable() {
   billOfMaterialsColumns.forEach((col) => {
     const th = document.createElement("th");
     th.textContent = col.label;
+    if (col.required) {
+      const asterisk = document.createElement("span");
+      asterisk.className = "required-asterisk";
+      asterisk.textContent = " *";
+      th.appendChild(asterisk);
+    }
     headerRow.appendChild(th);
   });
   const actionsTh = document.createElement("th");
@@ -719,6 +836,12 @@ function buildSplScrapMetaFields() {
     const inputId = `splMeta_${idx}`;
     label.setAttribute("for", inputId);
     label.textContent = field.label;
+    if (field.required) {
+      const asterisk = document.createElement("span");
+      asterisk.className = "required-asterisk";
+      asterisk.textContent = " *";
+      label.appendChild(asterisk);
+    }
 
     let input;
     if (Array.isArray(field.options)) {
@@ -766,6 +889,12 @@ function buildSplScrapTable() {
   splScrapColumns.forEach((col) => {
     const th = document.createElement("th");
     th.textContent = col.label;
+    if (col.required) {
+      const asterisk = document.createElement("span");
+      asterisk.className = "required-asterisk";
+      asterisk.textContent = " *";
+      th.appendChild(asterisk);
+    }
     headerRow.appendChild(th);
   });
   const actionsTh = document.createElement("th");
@@ -795,6 +924,18 @@ function addSplScrapRow() {
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
+      });
+    }
+    // Autoformato y límite estricto para HTS Code (packing list SPL/Scrap)
+    if (col.key === "usImpHts" || col.key === "usExpHts") {
+      input.addEventListener("input", () => {
+        const val = input.value.replace(/\D/g, "");
+        let formatted = val;
+        if (val.length > 4) formatted = val.slice(0, 4) + "." + val.slice(4);
+        if (val.length > 6)
+          formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
+        // Limitar a 12 caracteres exactos xxxx.xx.xxxx
+        input.value = formatted.slice(0, 12);
       });
     }
     // Navegación por teclado con Enter

@@ -13,9 +13,75 @@
   const filterUsuario = document.getElementById("filterUsuario");
 
   let filesList = [];
+  let allFilesList = [];
+
+  function renderFilteredDocuments(docs) {
+    tableBody.innerHTML = "";
+    if (!docs.length) {
+      renderEmpty("No hay informacion para este tipo.");
+      return;
+    }
+    docs.forEach((doc) => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      nameCell.textContent = getAdminDocName(doc);
+      const nomenclatureCell = document.createElement("td");
+      nomenclatureCell.textContent = doc.lastDownloadedName || "-";
+      const updatedCell = document.createElement("td");
+      updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
+      const userCell = document.createElement("td");
+      const userId = doc.updatedBy
+        ? String(doc.updatedBy)
+        : doc.createdBy
+          ? String(doc.createdBy)
+          : "";
+      const userLabel = userCache.get(userId) || userId || "N/A";
+      userCell.textContent = userLabel;
+      const actionsCell = document.createElement("td");
+      const actionsWrap = document.createElement("div");
+      actionsWrap.className = "admin-actions";
+      const downloadBtn = document.createElement("button");
+      downloadBtn.type = "button";
+      downloadBtn.className = "admin-action-btn download-btn";
+      downloadBtn.title = "Descargar";
+      downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v8m0 0l-4-4m4 4l4-4"/><rect x="4" y="16" width="12" height="2" rx="1"/></svg>`;
+      downloadBtn.addEventListener("click", () => {
+        window.location.href = `/api/files/admin-files/${doc._id}/download?type=${currentDocType}`;
+      });
+      const updateBtn = document.createElement("button");
+      updateBtn.type = "button";
+      updateBtn.className = "admin-action-btn update-btn";
+      updateBtn.title = "Actualizar";
+      updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
+      updateBtn.addEventListener("click", () => {
+        window.location.href = `/file-creation?edit=${doc._id}&type=${currentDocType}`;
+      });
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "admin-action-btn delete-btn";
+      deleteBtn.title = "Borrar";
+      deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="11" rx="2"/><path d="M8 9v5m4-5v5M5 6V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>`;
+      deleteBtn.addEventListener("click", () => {
+        pendingDeleteId = doc._id;
+        if (deleteModal) deleteModal.classList.remove("hidden");
+      });
+      actionsWrap.style.display = "flex";
+      actionsWrap.style.gap = "4px";
+      actionsWrap.appendChild(downloadBtn);
+      actionsWrap.appendChild(updateBtn);
+      actionsWrap.appendChild(deleteBtn);
+      actionsCell.appendChild(actionsWrap);
+      row.appendChild(nameCell);
+      row.appendChild(nomenclatureCell);
+      row.appendChild(updatedCell);
+      row.appendChild(userCell);
+      row.appendChild(actionsCell);
+      tableBody.appendChild(row);
+    });
+  }
 
   function applyColumnFilters() {
-    let filtered = filesList;
+    let filtered = allFilesList;
     if (filterNombre && filterNombre.value.trim() !== "") {
       const val = filterNombre.value.trim().toLowerCase();
       filtered = filtered.filter((file) => {
@@ -57,14 +123,7 @@
         return String(userLabel).toLowerCase().includes(val);
       });
     }
-    if (
-      filtered.length &&
-      (filtered[0].adminFileName || filtered[0].lastDownloadedName)
-    ) {
-      renderDocuments(filtered);
-    } else {
-      renderRows(filtered);
-    }
+    renderFilteredDocuments(filtered);
   }
 
   [filterNombre, filterNomenclatura, filterFecha, filterUsuario].forEach(
@@ -74,6 +133,66 @@
       }
     },
   );
+
+  // Ordenar por abecedario con botón de flechas
+  // 0: por fecha (desc, flechas juntas), 1: alfabético asc (flecha arriba), 2: alfabético desc (flecha abajo)
+  let sortMode = 0;
+  const sortNombreBtn = document.getElementById("sortNombreBtn");
+  const sortNombreIcon = document.getElementById("sortNombreIcon");
+  if (sortNombreBtn && sortNombreIcon) {
+    sortNombreBtn.addEventListener("click", () => {
+      sortMode = (sortMode + 1) % 3;
+      if (sortMode === 0) {
+        sortNombreIcon.src =
+          "/src/icons/ordenar-flechas-par-apuntando-hacia-arriba-y-hacia-abajo.png";
+      } else if (sortMode === 1) {
+        sortNombreIcon.src = "/src/icons/caret-flecha-hacia-arriba.png";
+      } else {
+        sortNombreIcon.src = "/src/icons/caret-abajo.png";
+      }
+      renderSortedDocuments();
+    });
+  }
+
+  function renderSortedDocuments() {
+    let docs = allFilesList.slice();
+    if (sortMode === 0) {
+      // Por fecha descendente (más reciente arriba)
+      docs.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bDate - aDate;
+      });
+    } else if (sortMode === 1) {
+      // Alfabético ascendente
+      docs.sort((a, b) => {
+        const aName = (a.adminFileName || a.fileName || "").toLowerCase();
+        const bName = (b.adminFileName || b.fileName || "").toLowerCase();
+        return aName.localeCompare(bName);
+      });
+    } else {
+      // Alfabético descendente
+      docs.sort((a, b) => {
+        const aName = (a.adminFileName || a.fileName || "").toLowerCase();
+        const bName = (b.adminFileName || b.fileName || "").toLowerCase();
+        return bName.localeCompare(aName);
+      });
+    }
+    renderFilteredDocuments(docs);
+  }
+
+  // Resetear Filtros
+  const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", () => {
+      [filterNombre, filterNomenclatura, filterFecha, filterUsuario].forEach(
+        (input) => {
+          if (input) input.value = "";
+        },
+      );
+      applyColumnFilters();
+    });
+  }
 
   if (!typeSelect || !panel || !tableBody) return;
   let currentDocType = "";
@@ -174,69 +293,13 @@
   };
 
   const renderDocuments = (docs, docType) => {
-    filesList = docs; // <-- Actualiza la lista global para los filtros
-    tableBody.innerHTML = "";
-    if (!docs.length) {
-      renderEmpty("No hay informacion para este tipo.");
-      return;
-    }
-    docs.forEach((doc) => {
-      const row = document.createElement("tr");
-      const nameCell = document.createElement("td");
-      nameCell.textContent = getAdminDocName(doc);
-      const nomenclatureCell = document.createElement("td");
-      nomenclatureCell.textContent = doc.lastDownloadedName || "-";
-      const updatedCell = document.createElement("td");
-      updatedCell.textContent = formatDate(doc.updatedAt || doc.createdAt);
-      const userCell = document.createElement("td");
-      const userId = doc.updatedBy
-        ? String(doc.updatedBy)
-        : doc.createdBy
-          ? String(doc.createdBy)
-          : "";
-      const userLabel = userCache.get(userId) || userId || "N/A";
-      userCell.textContent = userLabel;
-      const actionsCell = document.createElement("td");
-      const actionsWrap = document.createElement("div");
-      actionsWrap.className = "admin-actions";
-      const downloadBtn = document.createElement("button");
-      downloadBtn.type = "button";
-      downloadBtn.className = "admin-action-btn download-btn";
-      downloadBtn.title = "Descargar";
-      downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v8m0 0l-4-4m4 4l4-4"/><rect x="4" y="16" width="12" height="2" rx="1"/></svg>`;
-      downloadBtn.addEventListener("click", () => {
-        window.location.href = `/api/files/admin-files/${doc._id}/download?type=${docType}`;
-      });
-      const updateBtn = document.createElement("button");
-      updateBtn.type = "button";
-      updateBtn.className = "admin-action-btn update-btn";
-      updateBtn.title = "Actualizar";
-      updateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75l11.06-11.06a1.06 1.06 0 0 0 0-1.5l-2.25-2.25a1.06 1.06 0 0 0-1.5 0L3 17.25z"/></svg>`;
-      updateBtn.addEventListener("click", () => {
-        window.location.href = `/file-creation?edit=${doc._id}&type=${docType}`;
-      });
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "admin-action-btn delete-btn";
-      deleteBtn.title = "Borrar";
-      deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="11" rx="2"/><path d="M8 9v5m4-5v5M5 6V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>`;
-      deleteBtn.addEventListener("click", () => {
-        pendingDeleteId = doc._id;
-        if (deleteModal) deleteModal.classList.remove("hidden");
-      });
-      actionsWrap.style.display = "flex";
-      actionsWrap.style.gap = "4px";
-      actionsWrap.appendChild(downloadBtn);
-      actionsWrap.appendChild(updateBtn);
-      actionsWrap.appendChild(deleteBtn);
-      actionsCell.appendChild(actionsWrap);
-      row.appendChild(nameCell);
-      row.appendChild(nomenclatureCell);
-      row.appendChild(updatedCell);
-      row.appendChild(userCell);
-      row.appendChild(actionsCell);
-      tableBody.appendChild(row);
-    });
+    allFilesList = docs;
+    // Por defecto: modo 0 (fecha descendente, flechas dobles)
+    sortMode = 0;
+    if (sortNombreIcon)
+      sortNombreIcon.src =
+        "/src/icons/ordenar-flechas-par-apuntando-hacia-arriba-y-hacia-abajo.png";
+    renderSortedDocuments();
   };
 
   const loadUsers = async () => {

@@ -14,8 +14,8 @@
     <h1>Creación de Archivos API</h1>
 
     <div class="form-group">
-      <label for="fileType">Tipo de Archivo a Crear:</label>
-      <select id="fileType">
+      <label for="fileType" style="font-weight: bold;">Tipo de Archivo a Crear:</label>
+      <select id="fileType" style="margin-top: 10px;">
         <option value="">-- Seleccione el tipo --</option>
         <option value="finishedProduct">Finished Product</option>
         <option value="rawMaterial">Raw Material</option>
@@ -25,13 +25,9 @@
     </div>
 
     <div id="adminFileNameGroup" class="form-group hidden">
-      <label for="adminFileName">Nombre para administracion:</label>
-      <input
-        type="text"
-        id="adminFileName"
-        maxlength="80"
-        placeholder="Ej. FP_2026-03-24_Lote1"
-      />
+      <label for="adminFileName" style="font-weight: bold;">Nombre para administracion:</label>
+      <input type="text" id="adminFileName" style="margin-top: 10px;" maxlength="80"
+        placeholder="Ej. FP_2026-03-24_Lote1" />
     </div>
 
     <div id="format-finishedProduct" class="format-section hidden">
@@ -86,19 +82,19 @@
       </div>
     </div>
 
-    <button id="createFileButton">
-      <span class="btn-text">Crear Archivo</span>
-      <span class="spinner hidden"></span>
-    </button>
-
-    <button id="updateFileButton" class="hidden">
-      <span class="btn-text">Actualizar Archivo</span>
-      <span class="spinner hidden"></span>
-    </button>
-
-    <a id="adminFilesButton" class="button" href="file-admin.html">
-      <span class="btn-text">Administrar Archivos</span>
-    </a>
+    <div class="creation-actions-row">
+      <button id="createFileButton">
+        <span class="btn-text">Crear Archivo</span>
+        <span class="spinner hidden"></span>
+      </button>
+      <button id="updateFileButton" class="hidden">
+        <span class="btn-text">Actualizar Archivo</span>
+        <span class="spinner hidden"></span>
+      </button>
+      <a id="adminFilesButton" class="button" href="file-admin.html">
+        <span class="btn-text">Administrar Archivos</span>
+      </a>
+    </div>
 
     <div id="validationResult" class="conversion-result hidden"></div>
     <div class="dashboard-nav">
