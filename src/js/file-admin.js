@@ -137,13 +137,13 @@
   // Ordenar por abecedario con botón de flechas
   let sortNombreAsc = true;
   const sortNombreBtn = document.getElementById("sortNombreBtn");
-  if (sortNombreBtn) {
+  const sortNombreIcon = document.getElementById("sortNombreIcon");
+  if (sortNombreBtn && sortNombreIcon) {
     sortNombreBtn.addEventListener("click", () => {
       sortNombreAsc = !sortNombreAsc;
-      // Cambia el SVG según el orden
-      sortNombreBtn.innerHTML = sortNombreAsc
-        ? `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 14l3 3 3-3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 6l3-3 3 3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-        : `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 6l3-3 3 3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 14l3 3 3-3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      sortNombreIcon.src = sortNombreAsc
+        ? "../icons/flecha-hacia-arriba.png"
+        : "../icons/flecha-hacia-abajo.png";
       renderSortedDocuments();
     });
   }

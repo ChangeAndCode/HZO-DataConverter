@@ -14,8 +14,8 @@
     <h1>Administracion de Archivos</h1>
 
     <div class="form-group">
-      <label for="adminFileType">Tipo de Archivo:</label>
-      <select id="adminFileType">
+      <label for="adminFileType" style="font-weight: bold;">Tipo de Archivo:</label>
+      <select id="adminFileType" style="margin-top: 10px;">
         <option value="">-- Seleccione el tipo --</option>
         <option value="rawMaterial">RAW MATERIAL</option>
         <option value="billOfMaterials">BILL OF MATERIAL</option>
@@ -28,20 +28,10 @@
       <h2>Archivos</h2>
       <!-- Filtros por columna -->
       <h2>Filtros</h2>
-      <div class="admin-files-filters" style="margin-bottom: 12px; display: flex; gap: 1%; align-items: center;">
+      <div class="admin-files-filters" style="margin-bottom: 12px; display: flex; gap: 1%;">
         <div class="admin-box-filters" style="position: relative;">
           <h3>Nombre</h3>
-          <div style="display: flex; align-items: center; position: relative;">
-            <input type="text" id="filterNombre" placeholder="ejemploRawMaterial202IUWHEIHURE"
-              style="width: 100%; padding-right: 34px;" />
-            <button type="button" id="sortNombreBtn" class="sort-btn" title="Ordenar alfabéticamente"
-              style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: #f5f8fb; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; padding: 0;">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 14l3 3 3-3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M7 6l3-3 3 3" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </div>
+          <input type="text" id="filterNombre" placeholder="ejemploRawMaterial202IUWHEIHURE" style="width: 100%;" />
         </div>
         <div class="admin-box-filters">
           <h3>Nomenclatura</h3>
@@ -55,14 +45,24 @@
           <h3>Usuario</h3>
           <input type="text" id="filterUsuario" placeholder="GibranPerez" style="width: 100%;" />
         </div>
-        <button type="button" id="resetFiltersBtn" class="button-reset">Resetear
-          Filtros</button>
+        <button type="button" id="resetFiltersBtn" class="button-reset" title="Resetear filtros"
+          style="display: flex; align-items: center; justify-content: center; height: 44px; width: 48px; min-width: 48px; max-width: 48px; padding: 0; box-shadow: none;">
+          <img class="img-filter" src="/icons/filtrar.png" alt="Resetear filtros"
+            style="width: 28px; height: 28px; display: block; margin: auto;" />
+        </button>
       </div>
       <div class="table-wrapper">
         <table id="adminFilesTable" class="data-table">
           <thead>
             <tr>
-              <th>Nombre</th>
+              <th style="position: relative;">
+                Nombre
+                <button type="button" id="sortNombreBtn" class="sort-btn" title="Ordenar alfabéticamente"
+                  style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; padding: 0; margin: 0; box-shadow: none; cursor: pointer;">
+                  <img id="sortNombreIcon" src="/icons/flecha-hacia-arriba.png" alt="Ordenar"
+                    style="width: 18px; height: 18px; display: block;" />
+                </button>
+              </th>
               <th>Nomenclatura</th>
               <th>Ultima actualizacion</th>
               <th>Por Usuario</th>

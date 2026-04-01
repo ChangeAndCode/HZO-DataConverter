@@ -39,6 +39,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 console.log(PORT);
 
+// Servir la carpeta de íconos como estática
+app.use("/icons", express.static(path.join(__dirname, "src", "icons")));
+
 // Trust reverse proxy (needed for secure cookies behind TLS terminators)
 app.set("trust proxy", 1);
 
@@ -75,7 +78,7 @@ app.use(
       sameSite: isProd ? "none" : "lax",
       maxAge: 24 * 60 * 60 * 1000, // Cookie expiry time (1 day in milliseconds)
     },
-  })
+  }),
 );
 
 // 6. Inicializar Passport (Authentication Middleware)
@@ -193,7 +196,7 @@ const startServer = async () => {
   } catch (err) {
     console.error(
       "[App Startup] Failed to ensure automated processing directories or start cron job:",
-      err
+      err,
     );
     // Depending on criticality, you might want to exit the process here: process.exit(1);
   }
@@ -201,11 +204,11 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
     console.log(
-      "Ensure esbuild is also running in watch mode for frontend changes."
+      "Ensure esbuild is also running in watch mode for frontend changes.",
     );
 
     console.log(
-      "You can use `npm run dev` to start both backend and frontend automatically."
+      "You can use `npm run dev` to start both backend and frontend automatically.",
     );
   });
 };
