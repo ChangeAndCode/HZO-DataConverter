@@ -23,6 +23,158 @@ const SPLScrap = require("../models/SPLScrap");
 const multer = require("multer");
 const upload = multer({ dest: "temp_uploads/" });
 
+const ADMIN_FILE_MODELS = {
+  finishedProduct: FinishedProduct,
+  rawMaterial: RawMaterial,
+  billOfMaterials: BillOfMaterials,
+  splScrap: SPLScrap,
+};
+
+const VALID_ADMIN_FILE_TYPES = Object.keys(ADMIN_FILE_MODELS);
+const ADMIN_FILE_TYPES_ERROR_MESSAGE =
+  "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.";
+
+const createHttpError = (statusCode, message, extra = {}) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  Object.assign(error, extra);
+  return error;
+};
+
+const isSupportedAdminFileType = (type) => VALID_ADMIN_FILE_TYPES.includes(type);
+
+const getAdminFileModelByType = (type) => ADMIN_FILE_MODELS[type] || null;
+
+const requireAdminFileModelByType = (type) => {
+  const model = getAdminFileModelByType(type);
+  if (!model) {
+    throw createHttpError(400, ADMIN_FILE_TYPES_ERROR_MESSAGE, {
+      code: "ADMIN_FILE_TYPE_INVALID",
+    });
+  }
+  return model;
+};
+
+const normalizeAdminFileName = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findExistingAdminFileByName = async (name, options = {}) => {
+  const normalizedName = normalizeAdminFileName(name);
+  if (!normalizedName) return null;
+
+  const checks = VALID_ADMIN_FILE_TYPES.map(async (type) => {
+    const model = getAdminFileModelByType(type);
+    const query = {
+      adminFileName: {
+        $regex: `^${escapeRegex(normalizedName)}$`,
+        $options: "i",
+      },
+    };
+
+    if (
+      options.exclude &&
+      options.exclude.type === type &&
+      options.exclude.id &&
+      mongoose.Types.ObjectId.isValid(options.exclude.id)
+    ) {
+      query._id = { $ne: options.exclude.id };
+    }
+
+    const document = await model.findOne(query).select("_id adminFileName").lean();
+    return document ? { type, document } : null;
+  });
+
+  const results = await Promise.all(checks);
+  return results.find(Boolean) || null;
+};
+
+const assertAdminFileNameAvailable = async (name, options = {}) => {
+  const normalizedName = normalizeAdminFileName(name);
+  if (!normalizedName) return "";
+
+  const existing = await findExistingAdminFileByName(normalizedName, options);
+  if (!existing) return normalizedName;
+
+  throw createHttpError(
+    409,
+    `Ya existe un archivo con el nombre "${normalizedName}". Usa un nombre distinto.`,
+    {
+      code: "ADMIN_FILE_NAME_DUPLICATE",
+      existingType: existing.type,
+      existingId: existing.document._id,
+    }
+  );
+};
+
+const assertUserCanAccessAdminFile = (doc, user) => {
+  const isAdmin = user && (user.isAdmin || user.role === "admin");
+  if (!isAdmin && String(doc.createdBy || "") !== String(user?.id || "")) {
+    throw createHttpError(403, "Acceso denegado.");
+  }
+};
+
+const getAdminFileDocumentOrThrow = async ({
+  id,
+  type,
+  user,
+  lean = false,
+}) => {
+  if (!id) {
+    throw createHttpError(400, "id es requerido.");
+  }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw createHttpError(400, "id invalido.");
+  }
+
+  const model = requireAdminFileModelByType(type);
+  const query = model.findById(id);
+  const doc = lean ? await query.lean() : await query;
+  if (!doc) {
+    throw createHttpError(404, "Archivo no encontrado.");
+  }
+
+  assertUserCanAccessAdminFile(doc, user);
+  return { model, doc };
+};
+
+const cloneAdminFileRows = (rows) => {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    if (typeof row.toObject === "function") {
+      return row.toObject();
+    }
+    return { ...row };
+  });
+};
+
+const createAdminFileDocument = async ({
+  documentType,
+  adminFileName,
+  lastDownloadedName,
+  userId,
+  sourceJobId,
+  rows,
+}) => {
+  const model = requireAdminFileModelByType(documentType);
+  const savedDoc = await model.create({
+    adminFileName: normalizeAdminFileName(adminFileName) || undefined,
+    lastDownloadedName: normalizeAdminFileName(lastDownloadedName) || undefined,
+    createdBy: userId,
+    updatedBy: userId,
+    sourceJobId: sourceJobId || undefined,
+    rows: cloneAdminFileRows(rows),
+  });
+
+  return {
+    savedDoc,
+    savedDb: model.db.name,
+    savedCollection: model.collection.name,
+  };
+};
+
 // Helper function for checking file existence asynchronously
 const fileExists = async (filePath) => {
   try {
@@ -322,8 +474,7 @@ const validateManualData = async (req, res) => {
 
 const createManualFile = async (req, res) => {
   const { documentType, rows, outputFormat, displayName } = req.body || {};
-  const normalizedName =
-    typeof displayName === "string" ? displayName.trim() : "";
+  const normalizedName = normalizeAdminFileName(displayName);
 
   if (!documentType) {
     return res.status(400).json({ message: "documentType es requerido." });
@@ -355,6 +506,10 @@ const createManualFile = async (req, res) => {
 
   let newJob;
   try {
+    if (normalizedName) {
+      await assertAdminFileNameAvailable(normalizedName);
+    }
+
     newJob = await conversionJobRepository.createConversionJob({
       userId: req.user.id,
       fileName: `manual-${documentType}.${finalOutputFormat}`,
@@ -392,75 +547,23 @@ const createManualFile = async (req, res) => {
           normalizedName ||
           (typeof outputFileName === "string" ? outputFileName : "");
 
-        if (documentType === "finishedProduct") {
-          const savedDoc = await FinishedProduct.create({
-            adminFileName: adminFileName || undefined,
-            lastDownloadedName:
-              typeof outputFileName === "string" ? outputFileName : undefined,
-            createdBy: req.user.id,
-            updatedBy: req.user.id,
-            sourceJobId: newJob._id,
-            rows: rowsToSave,
-          });
+        await assertAdminFileNameAvailable(adminFileName);
+        const result = await createAdminFileDocument({
+          documentType,
+          adminFileName,
+          lastDownloadedName:
+            typeof outputFileName === "string" ? outputFileName : undefined,
+          userId: req.user.id,
+          sourceJobId: newJob._id,
+          rows: rowsToSave,
+        });
 
-          savedCount = savedDoc ? 1 : 0;
-          savedDb = FinishedProduct.db.name;
-          savedCollection = FinishedProduct.collection.name;
-          console.log(
-            `[FinishedProduct] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
-          );
-        } else if (documentType === "rawMaterial") {
-          const savedDoc = await RawMaterial.create({
-            adminFileName: adminFileName || undefined,
-            lastDownloadedName:
-              typeof outputFileName === "string" ? outputFileName : undefined,
-            createdBy: req.user.id,
-            updatedBy: req.user.id,
-            sourceJobId: newJob._id,
-            rows: rowsToSave,
-          });
-
-          savedCount = savedDoc ? 1 : 0;
-          savedDb = RawMaterial.db.name;
-          savedCollection = RawMaterial.collection.name;
-          console.log(
-            `[RawMaterial] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
-          );
-        } else if (documentType === "billOfMaterials") {
-          const savedDoc = await BillOfMaterials.create({
-            adminFileName: adminFileName || undefined,
-            lastDownloadedName:
-              typeof outputFileName === "string" ? outputFileName : undefined,
-            createdBy: req.user.id,
-            updatedBy: req.user.id,
-            sourceJobId: newJob._id,
-            rows: rowsToSave,
-          });
-
-          savedCount = savedDoc ? 1 : 0;
-          savedDb = BillOfMaterials.db.name;
-          savedCollection = BillOfMaterials.collection.name;
-          console.log(
-            `[BOM] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
-          );
-        } else if (documentType === "splScrap") {
-          const savedDoc = await SPLScrap.create({
-            adminFileName: adminFileName || undefined,
-            lastDownloadedName:
-              typeof outputFileName === "string" ? outputFileName : undefined,
-            createdBy: req.user.id,
-            updatedBy: req.user.id,
-            sourceJobId: newJob._id,
-            rows: rowsToSave,
-          });
-
-          savedCount = savedDoc ? 1 : 0;
-          savedDb = SPLScrap.db.name;
-          savedCollection = SPLScrap.collection.name;
-          console.log(
-            `[SPLScrap] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
-          );
-        }
+        savedCount = result.savedDoc ? 1 : 0;
+        savedDb = result.savedDb;
+        savedCollection = result.savedCollection;
+        console.log(
+          `[${documentType}] Inserted ${savedCount} doc into ${savedDb}.${savedCollection}`
+        );
       }
     }
 
@@ -489,9 +592,13 @@ const createManualFile = async (req, res) => {
         { errorMessage: error.message }
       );
     }
-    return res.status(500).json({
-      message: "Error al procesar los datos manuales.",
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error al procesar los datos manuales.",
       error: error.message,
+      code: error.code,
     });
   }
 };
@@ -502,33 +609,14 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(400).json({ message: "type es requerido." });
   }
 
-  if (
-    type !== "finishedProduct" &&
-    type !== "rawMaterial" &&
-    type !== "billOfMaterials" &&
-    type !== "splScrap"
-  ) {
-    return res.status(400).json({
-      message:
-        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados por ahora.",
-    });
-  }
-
   try {
+    const model = requireAdminFileModelByType(type);
     const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
     const query = isAdmin ? {} : { createdBy: req.user.id };
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
     const selectFields =
       "adminFileName lastDownloadedName createdBy updatedBy createdAt updatedAt";
-    const model =
-      type === "rawMaterial"
-        ? RawMaterial
-        : type === "billOfMaterials"
-          ? BillOfMaterials
-          : type === "splScrap"
-            ? SPLScrap
-            : FinishedProduct;
     const docs = await model
       .find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
@@ -539,8 +627,12 @@ const getAdminFilesByType = async (req, res) => {
     return res.status(200).json({ documents: docs });
   } catch (error) {
     console.error("Error al listar archivos admin:", error);
-    return res.status(500).json({
-      message: "Error interno del servidor al listar archivos.",
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno del servidor al listar archivos.",
+      code: error.code,
     });
   }
 };
@@ -549,49 +641,24 @@ const getAdminFileById = async (req, res) => {
   const { id } = req.params;
   const { type } = req.query || {};
 
-  if (!id) {
-    return res.status(400).json({ message: "id es requerido." });
-  }
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "id invalido." });
-  }
-  if (
-    type !== "finishedProduct" &&
-    type !== "rawMaterial" &&
-    type !== "billOfMaterials" &&
-    type !== "splScrap"
-  ) {
-    return res.status(400).json({
-      message:
-        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
-    });
-  }
-
   try {
-    const model =
-      type === "rawMaterial"
-        ? RawMaterial
-        : type === "billOfMaterials"
-          ? BillOfMaterials
-          : type === "splScrap"
-            ? SPLScrap
-            : FinishedProduct;
-    const doc = await model.findById(id).lean();
-    if (!doc) {
-      return res.status(404).json({ message: "Archivo no encontrado." });
-    }
-
-    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
-    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
-      return res.status(403).json({ message: "Acceso denegado." });
-    }
+    const { doc } = await getAdminFileDocumentOrThrow({
+      id,
+      type,
+      user: req.user,
+      lean: true,
+    });
 
     return res.status(200).json({ document: doc });
   } catch (error) {
     console.error("Error al obtener archivo admin:", error);
-    return res
-      .status(500)
-      .json({ message: "Error interno al obtener el archivo." });
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno al obtener el archivo.",
+      code: error.code,
+    });
   }
 };
 
@@ -599,39 +666,12 @@ const downloadAdminFileById = async (req, res) => {
   const { id } = req.params;
   const { type } = req.query || {};
 
-  if (!id) {
-    return res.status(400).json({ message: "id es requerido." });
-  }
-  if (
-    type !== "finishedProduct" &&
-    type !== "rawMaterial" &&
-    type !== "billOfMaterials" &&
-    type !== "splScrap"
-  ) {
-    return res.status(400).json({
-      message:
-        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
-    });
-  }
-
   try {
-    const model =
-      type === "rawMaterial"
-        ? RawMaterial
-        : type === "billOfMaterials"
-          ? BillOfMaterials
-          : type === "splScrap"
-            ? SPLScrap
-            : FinishedProduct;
-    const doc = await model.findById(id);
-    if (!doc) {
-      return res.status(404).json({ message: "Archivo no encontrado." });
-    }
-
-    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
-    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
-      return res.status(403).json({ message: "Acceso denegado." });
-    }
+    const { doc } = await getAdminFileDocumentOrThrow({
+      id,
+      type,
+      user: req.user,
+    });
 
     const rowsToExport = Array.isArray(doc.rows) ? doc.rows : [];
     if (!rowsToExport.length) {
@@ -678,9 +718,65 @@ const downloadAdminFileById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al descargar archivo admin:", error);
-    return res
-      .status(500)
-      .json({ message: "Error interno al descargar el archivo." });
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno al descargar el archivo.",
+      code: error.code,
+    });
+  }
+};
+
+const copyAdminFileById = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query || {};
+  const { displayName } = req.body || {};
+  const normalizedName = normalizeAdminFileName(displayName);
+
+  if (!normalizedName) {
+    return res.status(400).json({
+      message: "El nombre del archivo es requerido para copiar.",
+      code: "ADMIN_FILE_NAME_REQUIRED",
+    });
+  }
+
+  try {
+    const { doc } = await getAdminFileDocumentOrThrow({
+      id,
+      type,
+      user: req.user,
+    });
+
+    await assertAdminFileNameAvailable(normalizedName);
+
+    const result = await createAdminFileDocument({
+      documentType: type,
+      adminFileName: normalizedName,
+      userId: req.user.id,
+      rows: doc.rows,
+    });
+
+    return res.status(201).json({
+      message: "Archivo copiado.",
+      document: {
+        _id: result.savedDoc._id,
+        adminFileName: result.savedDoc.adminFileName,
+        createdAt: result.savedDoc.createdAt,
+        updatedAt: result.savedDoc.updatedAt,
+        createdBy: result.savedDoc.createdBy,
+        updatedBy: result.savedDoc.updatedBy,
+      },
+    });
+  } catch (error) {
+    console.error("Error al copiar archivo admin:", error);
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno al copiar el archivo.",
+      code: error.code,
+    });
   }
 };
 
@@ -689,21 +785,9 @@ const updateAdminFileById = async (req, res) => {
   const { type } = req.query || {};
   const { rows, displayName } = req.body || {};
 
-  if (!id) {
-    return res.status(400).json({ message: "id es requerido." });
-  }
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "id invalido." });
-  }
-  if (
-    type !== "finishedProduct" &&
-    type !== "rawMaterial" &&
-    type !== "billOfMaterials" &&
-    type !== "splScrap"
-  ) {
+  if (!isSupportedAdminFileType(type)) {
     return res.status(400).json({
-      message:
-        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
+      message: ADMIN_FILE_TYPES_ERROR_MESSAGE,
     });
   }
   if (!Array.isArray(rows)) {
@@ -711,23 +795,11 @@ const updateAdminFileById = async (req, res) => {
   }
 
   try {
-    const model =
-      type === "rawMaterial"
-        ? RawMaterial
-        : type === "billOfMaterials"
-          ? BillOfMaterials
-          : type === "splScrap"
-            ? SPLScrap
-            : FinishedProduct;
-    const doc = await model.findById(id);
-    if (!doc) {
-      return res.status(404).json({ message: "Archivo no encontrado." });
-    }
-
-    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
-    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
-      return res.status(403).json({ message: "Acceso denegado." });
-    }
+    const { doc } = await getAdminFileDocumentOrThrow({
+      id,
+      type,
+      user: req.user,
+    });
 
     const parsedData = { Sheet1: rows };
     const transformedData = applyTransformations(parsedData, type);
@@ -754,9 +826,13 @@ const updateAdminFileById = async (req, res) => {
       });
     }
 
-    const normalizedName =
-      typeof displayName === "string" ? displayName.trim() : "";
-    doc.adminFileName = normalizedName || doc.adminFileName;
+    const normalizedName = normalizeAdminFileName(displayName);
+    const nextAdminFileName = normalizedName || doc.adminFileName || "";
+    await assertAdminFileNameAvailable(nextAdminFileName, {
+      exclude: { type, id },
+    });
+
+    doc.adminFileName = nextAdminFileName || doc.adminFileName;
     doc.rows = Array.isArray(transformedData.Sheet1)
       ? transformedData.Sheet1
       : [];
@@ -771,9 +847,13 @@ const updateAdminFileById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar archivo admin:", error);
-    return res
-      .status(500)
-      .json({ message: "Error interno al actualizar el archivo." });
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno al actualizar el archivo.",
+      code: error.code,
+    });
   }
 };
 
@@ -781,50 +861,24 @@ const deleteAdminFileById = async (req, res) => {
   const { id } = req.params;
   const { type } = req.query || {};
 
-  if (!id) {
-    return res.status(400).json({ message: "id es requerido." });
-  }
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "id invalido." });
-  }
-  if (
-    type !== "finishedProduct" &&
-    type !== "rawMaterial" &&
-    type !== "billOfMaterials" &&
-    type !== "splScrap"
-  ) {
-    return res.status(400).json({
-      message:
-        "Solo finishedProduct, rawMaterial, billOfMaterials y splScrap estan habilitados.",
-    });
-  }
-
   try {
-    const model =
-      type === "rawMaterial"
-        ? RawMaterial
-        : type === "billOfMaterials"
-          ? BillOfMaterials
-          : type === "splScrap"
-            ? SPLScrap
-            : FinishedProduct;
-    const doc = await model.findById(id);
-    if (!doc) {
-      return res.status(404).json({ message: "Archivo no encontrado." });
-    }
-
-    const isAdmin = req.user && (req.user.isAdmin || req.user.role === "admin");
-    if (!isAdmin && String(doc.createdBy || "") !== String(req.user.id || "")) {
-      return res.status(403).json({ message: "Acceso denegado." });
-    }
+    const { model } = await getAdminFileDocumentOrThrow({
+      id,
+      type,
+      user: req.user,
+    });
 
     await model.deleteOne({ _id: id });
     return res.status(200).json({ message: "Archivo eliminado." });
   } catch (error) {
     console.error("Error al borrar archivo admin:", error);
-    return res
-      .status(500)
-      .json({ message: "Error interno al borrar el archivo." });
+    return res.status(error.statusCode || 500).json({
+      message:
+        error.statusCode && error.statusCode < 500
+          ? error.message
+          : "Error interno al borrar el archivo.",
+      code: error.code,
+    });
   }
 };
 
@@ -838,6 +892,7 @@ module.exports = {
   getAdminFilesByType,
   getAdminFileById,
   downloadAdminFileById,
+  copyAdminFileById,
   updateAdminFileById,
   deleteAdminFileById,
 };

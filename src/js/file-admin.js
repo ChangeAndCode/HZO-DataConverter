@@ -5,6 +5,15 @@
   const deleteModal = document.getElementById("deleteModal");
   const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
   const deleteCancelBtn = document.getElementById("deleteCancelBtn");
+  const copyModal = document.getElementById("copyModal");
+  const copySourceFileName = document.getElementById("copySourceFileName");
+  const copyFileNameInput = document.getElementById("copyFileNameInput");
+  const copyModalError = document.getElementById("copyModalError");
+  const copyCancelBtn = document.getElementById("copyCancelBtn");
+  const copyConfirmBtn = document.getElementById("copyConfirmBtn");
+  const copyConfirmBtnDefaultText = copyConfirmBtn
+    ? copyConfirmBtn.textContent
+    : "Crear copia";
 
   // Filtros por columna
   const filterNombre = document.getElementById("filterNombre");
@@ -56,6 +65,15 @@
       updateBtn.addEventListener("click", () => {
         window.location.href = `/file-creation?edit=${doc._id}&type=${currentDocType}`;
       });
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "admin-action-btn copy-btn";
+      copyBtn.title = "Copiar";
+      copyBtn.setAttribute("aria-label", `Copiar ${getAdminDocName(doc)}`);
+      copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="9" height="11" rx="2"/><path d="M5 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1"/></svg>`;
+      copyBtn.addEventListener("click", () => {
+        openCopyModal(doc);
+      });
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "admin-action-btn delete-btn";
@@ -69,6 +87,7 @@
       actionsWrap.style.gap = "4px";
       actionsWrap.appendChild(downloadBtn);
       actionsWrap.appendChild(updateBtn);
+      actionsWrap.appendChild(copyBtn);
       actionsWrap.appendChild(deleteBtn);
       actionsCell.appendChild(actionsWrap);
       row.appendChild(nameCell);
@@ -197,6 +216,7 @@
   if (!typeSelect || !panel || !tableBody) return;
   let currentDocType = "";
   let pendingDeleteId = "";
+  let pendingCopyDoc = null;
   let usersLoaded = false;
 
   const userCache = new Map();
@@ -226,6 +246,94 @@
   const getAdminDocName = (doc) => {
     if (doc && doc.adminFileName) return doc.adminFileName;
     return doc && doc._id ? String(doc._id) : "-";
+  };
+
+  const showCopyModalError = (message) => {
+    if (!copyModalError) return;
+    copyModalError.textContent = message || "No se pudo crear la copia.";
+    copyModalError.classList.remove("hidden");
+  };
+
+  const clearCopyModalError = () => {
+    if (!copyModalError) return;
+    copyModalError.textContent = "";
+    copyModalError.classList.add("hidden");
+  };
+
+  const setCopySubmitting = (isSubmitting) => {
+    if (!copyConfirmBtn) return;
+    copyConfirmBtn.disabled = isSubmitting;
+    copyConfirmBtn.textContent = isSubmitting
+      ? "Creando..."
+      : copyConfirmBtnDefaultText;
+  };
+
+  const resetCopyModalState = () => {
+    pendingCopyDoc = null;
+    if (copyFileNameInput) copyFileNameInput.value = "";
+    clearCopyModalError();
+    setCopySubmitting(false);
+  };
+
+  const closeCopyModal = () => {
+    resetCopyModalState();
+    if (copyModal) copyModal.classList.add("hidden");
+  };
+
+  const openCopyModal = (doc) => {
+    pendingCopyDoc = doc || null;
+    if (copySourceFileName) {
+      copySourceFileName.textContent = getAdminDocName(doc);
+    }
+    if (copyFileNameInput) {
+      copyFileNameInput.value = "";
+    }
+    clearCopyModalError();
+    setCopySubmitting(false);
+    if (copyModal) copyModal.classList.remove("hidden");
+    if (copyFileNameInput) {
+      window.setTimeout(() => copyFileNameInput.focus(), 0);
+    }
+  };
+
+  const submitCopy = async () => {
+    if (!pendingCopyDoc || !currentDocType) return;
+
+    const nextName = copyFileNameInput ? copyFileNameInput.value.trim() : "";
+    if (!nextName) {
+      showCopyModalError("Debes capturar un nombre para crear la copia.");
+      if (copyFileNameInput) copyFileNameInput.focus();
+      return;
+    }
+
+    clearCopyModalError();
+    setCopySubmitting(true);
+
+    try {
+      const response = await fetch(
+        `/api/files/admin-files/${pendingCopyDoc._id}/copy?type=${currentDocType}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ displayName: nextName }),
+        },
+      );
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || "No se pudo crear la copia.");
+      }
+
+      closeCopyModal();
+      await loadJobsForType(currentDocType || "finishedProduct");
+    } catch (error) {
+      showCopyModalError(error.message || "No se pudo crear la copia.");
+      if (copyFileNameInput) copyFileNameInput.focus();
+    } finally {
+      if (copyModal && !copyModal.classList.contains("hidden")) {
+        setCopySubmitting(false);
+      }
+    }
   };
 
   const renderEmpty = (message) => {
@@ -486,4 +594,47 @@
       }
     });
   }
+
+  if (copyCancelBtn) {
+    copyCancelBtn.addEventListener("click", () => {
+      closeCopyModal();
+    });
+  }
+
+  if (copyFileNameInput) {
+    copyFileNameInput.addEventListener("input", () => {
+      clearCopyModalError();
+    });
+    copyFileNameInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      submitCopy();
+    });
+  }
+
+  if (copyConfirmBtn) {
+    copyConfirmBtn.addEventListener("click", () => {
+      submitCopy();
+    });
+  }
+
+  if (copyModal) {
+    copyModal.addEventListener("click", (e) => {
+      if (e.target === copyModal) {
+        closeCopyModal();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (copyModal && !copyModal.classList.contains("hidden")) {
+      closeCopyModal();
+      return;
+    }
+    if (deleteModal && !deleteModal.classList.contains("hidden")) {
+      pendingDeleteId = "";
+      deleteModal.classList.add("hidden");
+    }
+  });
 });

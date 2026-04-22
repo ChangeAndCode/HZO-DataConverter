@@ -43,6 +43,11 @@ router.put(
   API_PROTECTED,
   fileController.updateAdminFileById,
 );
+router.post(
+  '/admin-files/:id/copy',
+  API_PROTECTED,
+  fileController.copyAdminFileById,
+);
 router.delete(
   '/admin-files/:id',
   API_PROTECTED,
