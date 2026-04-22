@@ -5,7 +5,7 @@ const { isValidCountryCode } = require("../data/countryCatalog");
 const HTS_FORMATTED_RE = /^\d{4}\.\d{2}\.\d{4}$/; // ####.##.####
 const PART_NUMBER_RE = /^[A-Z0-9 ._\/-]+$/;
 const isBlank = (v) => v === null || v === undefined || String(v).trim() === "";
-const ALLOW_EMPTY_MANDATORY_FIELDS =
+const DEFAULT_ALLOW_EMPTY_MANDATORY_FIELDS =
   (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() === "true";
 
 const normalizeNaftaFlag = (value) => {
@@ -25,7 +25,11 @@ const normalizeNaftaFlag = (value) => {
  * @param {string} documentType - The internal name of the document type.
  * @returns {{isValid: boolean, errors: Array<Object>}}
  */
-const validateDataIntegrity = (data, documentType) => {
+const validateDataIntegrity = (data, documentType, options = {}) => {
+  const allowEmptyMandatoryFields =
+    typeof options.allowEmptyMandatoryFields === "boolean"
+      ? options.allowEmptyMandatoryFields
+      : DEFAULT_ALLOW_EMPTY_MANDATORY_FIELDS;
   const { schemaSpec } = getRegistryEntry(documentType);
   const partNumberSpec =
     documentType === "finishedProduct"
@@ -54,7 +58,7 @@ const validateDataIntegrity = (data, documentType) => {
       if (
         fieldSpec.requirement === "M" &&
         isBlank(value) &&
-        !ALLOW_EMPTY_MANDATORY_FIELDS
+        !allowEmptyMandatoryFields
       ) {
         errors.push({
           type: "Integrity Error",

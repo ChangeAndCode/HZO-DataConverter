@@ -9,11 +9,6 @@ const {
   validateFormatCompatibility,
   getDefaultFormat,
 } = require("../utils/documentFormatRules");
-const {
-  validateDataIntegrity,
-  applyBusinessValidations,
-} = require("../utils/validationUtils");
-const { applyTransformations } = require("../utils/transformationUtils");
 const FinishedProduct = require("../models/FinishedProduct");
 const BillOfMaterials = require("../models/BOM");
 const RawMaterial = require("../models/RawMaterial");
@@ -451,24 +446,15 @@ const validateManualData = async (req, res) => {
     return res.status(400).json({ message: "rows debe ser un arreglo." });
   }
 
-  const parsedData = { Sheet1: rows };
-  const transformedData = applyTransformations(parsedData, documentType);
-  const integrityResult = validateDataIntegrity(transformedData, documentType);
-  const errors = [...integrityResult.errors];
-
-  if (integrityResult.isValid) {
-    const businessResult = await applyBusinessValidations(
-      transformedData,
-      documentType
-    );
-    if (!businessResult.isValid) {
-      errors.push(...businessResult.errors);
-    }
-  }
+  const validationResult = await fileConversionService.validateManualRowsForDocument(
+    rows,
+    documentType,
+    { allowEmptyMandatoryFields: false }
+  );
 
   return res.status(200).json({
-    isValid: errors.length === 0,
-    errors,
+    isValid: !validationResult.hasErrors,
+    errors: validationResult.errors,
   });
 };
 
@@ -534,7 +520,10 @@ const createManualFile = async (req, res) => {
       await fileConversionService.processManualDataForConversion(
         rows,
         finalOutputFormat,
-        { documentType }
+        {
+          documentType,
+          validationOptions: { allowEmptyMandatoryFields: false },
+        }
       );
 
     let savedCount = 0;
@@ -801,28 +790,16 @@ const updateAdminFileById = async (req, res) => {
       user: req.user,
     });
 
-    const parsedData = { Sheet1: rows };
-    const transformedData = applyTransformations(parsedData, type);
-    const integrityResult = validateDataIntegrity(
-      transformedData,
+    const validationResult = await fileConversionService.validateManualRowsForDocument(
+      rows,
       type,
+      { allowEmptyMandatoryFields: false }
     );
-    const errors = [...integrityResult.errors];
 
-    if (integrityResult.isValid) {
-      const businessResult = await applyBusinessValidations(
-        transformedData,
-        type,
-      );
-      if (!businessResult.isValid) {
-        errors.push(...businessResult.errors);
-      }
-    }
-
-    if (errors.length > 0) {
+    if (validationResult.hasErrors) {
       return res.status(400).json({
         message: "Errores de validacion.",
-        errors,
+        errors: validationResult.errors,
       });
     }
 
@@ -833,8 +810,8 @@ const updateAdminFileById = async (req, res) => {
     });
 
     doc.adminFileName = nextAdminFileName || doc.adminFileName;
-    doc.rows = Array.isArray(transformedData.Sheet1)
-      ? transformedData.Sheet1
+    doc.rows = Array.isArray(validationResult.transformedData.Sheet1)
+      ? validationResult.transformedData.Sheet1
       : [];
     doc.markModified("rows");
     doc.updatedBy = req.user.id;

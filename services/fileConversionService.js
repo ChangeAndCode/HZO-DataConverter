@@ -19,6 +19,65 @@ const WRITE_TXT_ON_VALIDATION_ERROR =
   (process.env.WRITE_TXT_ON_VALIDATION_ERROR || "false").toLowerCase() ===
   "true";
 
+const validateTransformedDataForDocument = async (
+  transformedData,
+  documentType,
+  validationOptions = {}
+) => {
+  const errorReport = [];
+  const integrityResult = validateDataIntegrity(
+    transformedData,
+    documentType,
+    validationOptions
+  );
+
+  if (!integrityResult.isValid) {
+    errorReport.push(...integrityResult.errors);
+  }
+
+  if (integrityResult.isValid) {
+    const businessValidationResult = await applyBusinessValidations(
+      transformedData,
+      documentType
+    );
+    if (!businessValidationResult.isValid) {
+      errorReport.push(...businessValidationResult.errors);
+    }
+  }
+
+  return {
+    transformedData,
+    errors: errorReport,
+    hasErrors: errorReport.length > 0,
+  };
+};
+
+const validateParsedDataForDocument = async (
+  parsedData,
+  documentType,
+  validationOptions = {}
+) => {
+  const transformedData = applyTransformations(parsedData, documentType);
+  return validateTransformedDataForDocument(
+    transformedData,
+    documentType,
+    validationOptions
+  );
+};
+
+const validateManualRowsForDocument = async (
+  rows,
+  documentType,
+  validationOptions = {}
+) => {
+  const parsedData = { Sheet1: Array.isArray(rows) ? rows : [] };
+  return validateParsedDataForDocument(
+    parsedData,
+    documentType,
+    validationOptions
+  );
+};
+
 // Service that encapsulates file conversion logic
 const processFileForConversion = async (
   fileBuffer,
@@ -56,26 +115,14 @@ const processFileForConversion = async (
       throw new Error(`Unsupported input file format: ${fileExtension}.`);
   }
 
-  // Step 2: Transformation (e.g., normalize enum values)
-  const transformedData = applyTransformations(parsedData, documentType);
-
-  // Step 3: Validation (Data Integrity and Business Rules)
-  const integrityResult = validateDataIntegrity(transformedData, documentType);
-  if (!integrityResult.isValid) {
-    errorReport.push(...integrityResult.errors);
-  }
-
-  if (integrityResult.isValid) {
-    const businessValidationResult = await applyBusinessValidations(
-      transformedData,
-      documentType
-    );
-    if (!businessValidationResult.isValid) {
-      errorReport.push(...businessValidationResult.errors);
-    }
-  }
-
-  const hasErrors = errorReport.length > 0;
+  // Step 2: Transformation + Validation
+  const validationResult = await validateParsedDataForDocument(
+    parsedData,
+    documentType
+  );
+  const transformedData = validationResult.transformedData;
+  errorReport = validationResult.errors;
+  const hasErrors = validationResult.hasErrors;
 
   // Step 4: (Opcional) generación del archivo de salida
   const baseName = path.parse(originalName).name;
@@ -151,7 +198,7 @@ const processManualDataForConversion = async (
   outputFormat,
   conversionOptions = {}
 ) => {
-  const { documentType } = conversionOptions;
+  const { documentType, validationOptions = {} } = conversionOptions;
 
   if (!documentType) {
     throw new Error(
@@ -159,29 +206,14 @@ const processManualDataForConversion = async (
     );
   }
 
-  const parsedData = { Sheet1: Array.isArray(rows) ? rows : [] };
-
-  // Step 1: Transformation (e.g., normalize enum values)
-  const transformedData = applyTransformations(parsedData, documentType);
-
-  // Step 2: Validation (Data Integrity and Business Rules)
-  let errorReport = [];
-  const integrityResult = validateDataIntegrity(transformedData, documentType);
-  if (!integrityResult.isValid) {
-    errorReport.push(...integrityResult.errors);
-  }
-
-  if (integrityResult.isValid) {
-    const businessValidationResult = await applyBusinessValidations(
-      transformedData,
-      documentType
-    );
-    if (!businessValidationResult.isValid) {
-      errorReport.push(...businessValidationResult.errors);
-    }
-  }
-
-  const hasErrors = errorReport.length > 0;
+  const validationResult = await validateManualRowsForDocument(
+    rows,
+    documentType,
+    validationOptions
+  );
+  const transformedData = validationResult.transformedData;
+  const errorReport = validationResult.errors;
+  const hasErrors = validationResult.hasErrors;
 
   // Step 3: Output file generation (optional)
   const outputExt = outputFormat || getDefaultFormat(documentType) || "txt";
@@ -457,4 +489,5 @@ const generateSplScrapFilename = (prefix, date = new Date()) => {
 module.exports = {
   processFileForConversion,
   processManualDataForConversion,
+  validateManualRowsForDocument,
 };
