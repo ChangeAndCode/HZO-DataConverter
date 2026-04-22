@@ -226,12 +226,6 @@ const splScrapMetaFields = [
   { key: "Waybill number", label: "Waybill number" },
   { key: "Total gross weight", label: "Total gross weight" },
   { key: "Total bundles", label: "Total bundles" },
-  {
-    key: "Regime",
-    label: "Regime",
-    required: true,
-    options: ["Permanent", "Temporary"],
-  },
 ];
 
 const splScrapColumns = [
@@ -279,6 +273,11 @@ const splScrapColumns = [
   { key: "licenseException", label: "License Exception" },
   { key: "usImpHts", label: "US IMP HTS Code", maxLength: 16, required: true },
   { key: "usExpHts", label: "US EXP HTS Code", maxLength: 16, required: true },
+  {
+    key: "regime",
+    label: "Regime",
+    options: ["Permanent", "Temporary"],
+  },
   { key: "brand", label: "Brand" },
   { key: "model", label: "Model" },
   { key: "serial", label: "Serial" },
@@ -944,17 +943,40 @@ function buildSplScrapTable() {
   updateTableScroll(splBody);
 }
 
+function getSplScrapRowEditors(rowElement) {
+  if (!rowElement) return [];
+  return Array.from(rowElement.querySelectorAll("input, select"));
+}
+
 function addSplScrapRow(values = {}) {
   if (!splBody) return;
   const row = document.createElement("tr");
 
   splScrapColumns.forEach((col) => {
     const td = document.createElement("td");
-    const input = document.createElement("input");
-    input.type = "text";
+    let input;
+    if (Array.isArray(col.options)) {
+      input = document.createElement("select");
+      if (col.key === "regime") {
+        input.classList.add("spl-regime-select");
+      }
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "-- Seleccione --";
+      input.appendChild(emptyOpt);
+      col.options.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt;
+        option.textContent = opt;
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = col.label;
+      if (col.maxLength) input.maxLength = col.maxLength;
+    }
     input.name = `splScrap[${col.key}][]`;
-    input.placeholder = col.label;
-    if (col.maxLength) input.maxLength = col.maxLength;
     if (col.required) input.required = true;
     const initialValue =
       col.label && values && values[col.label] !== undefined
@@ -971,7 +993,10 @@ function addSplScrapRow(values = {}) {
       });
     }
     // Autoformato y límite estricto para HTS Code (packing list SPL/Scrap)
-    if (col.key === "usImpHts" || col.key === "usExpHts") {
+    if (
+      input.tagName === "INPUT" &&
+      (col.key === "usImpHts" || col.key === "usExpHts")
+    ) {
       input.addEventListener("input", () => {
         const val = input.value.replace(/\D/g, "");
         let formatted = val;
@@ -984,11 +1009,10 @@ function addSplScrapRow(values = {}) {
     }
     // Navegación por teclado con Enter
     input.addEventListener("keydown", function (e) {
-      const rowInputs = Array.from(
-        input.closest("tr").querySelectorAll("input"),
-      );
+      const currentRow = input.closest("tr");
+      const rowInputs = getSplScrapRowEditors(currentRow);
       const row = Array.from(splBody.querySelectorAll("tr")).indexOf(
-        input.closest("tr"),
+        currentRow,
       );
       const col = rowInputs.indexOf(input);
       if (e.key === "Enter") {
@@ -997,22 +1021,26 @@ function addSplScrapRow(values = {}) {
           rowInputs[col + 1].focus();
         } else {
           if (row < splBody.children.length - 1) {
-            const nextRowInputs = Array.from(
-              splBody.children[row + 1].querySelectorAll("input"),
+            const nextRowInputs = getSplScrapRowEditors(
+              splBody.children[row + 1],
             );
             if (nextRowInputs[0]) nextRowInputs[0].focus();
           } else {
             addSplScrapRow();
             setTimeout(() => {
-              const newRowInputs = Array.from(
-                splBody.children[splBody.children.length - 1].querySelectorAll(
-                  "input",
-                ),
+              const newRowInputs = getSplScrapRowEditors(
+                splBody.children[splBody.children.length - 1],
               );
               if (newRowInputs[0]) newRowInputs[0].focus();
             }, 0);
           }
         }
+      } else if (
+        currentRow &&
+        input.tagName === "SELECT" &&
+        (e.key === "ArrowDown" || e.key === "ArrowUp")
+      ) {
+        return;
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         if (col < rowInputs.length - 1) {
@@ -1026,16 +1054,16 @@ function addSplScrapRow(values = {}) {
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         if (row < splBody.children.length - 1) {
-          const nextRowInputs = Array.from(
-            splBody.children[row + 1].querySelectorAll("input"),
+          const nextRowInputs = getSplScrapRowEditors(
+            splBody.children[row + 1],
           );
           if (nextRowInputs[col]) nextRowInputs[col].focus();
         }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         if (row > 0) {
-          const prevRowInputs = Array.from(
-            splBody.children[row - 1].querySelectorAll("input"),
+          const prevRowInputs = getSplScrapRowEditors(
+            splBody.children[row - 1],
           );
           if (prevRowInputs[col]) prevRowInputs[col].focus();
         }
@@ -1251,7 +1279,7 @@ function collectSplScrapRows() {
   const meta = collectSplScrapMeta();
   const rows = [];
   splBody.querySelectorAll("tr").forEach((tr) => {
-    const inputs = tr.querySelectorAll("input");
+    const inputs = tr.querySelectorAll("input, select");
     const row = {};
     splScrapColumns.forEach((col, idx) => {
       const val = inputs[idx] ? inputs[idx].value : "";
