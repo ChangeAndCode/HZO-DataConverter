@@ -601,6 +601,93 @@ h2 {
   box-sizing: border-box;
 }
 
+.catalog-autocomplete {
+  position: relative;
+  display: block;
+  width: 140px;
+  min-width: 140px;
+  vertical-align: top;
+}
+
+.data-table .catalog-autocomplete-input {
+  width: 100% !important;
+  padding-right: 28px;
+}
+
+.catalog-autocomplete-toggle {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 26px;
+  border: none;
+  background: transparent;
+  color: #4f5d75;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  font-size: 0.8em;
+  line-height: 1;
+}
+
+.catalog-autocomplete-toggle:hover,
+.catalog-autocomplete-toggle:focus {
+  outline: none;
+  color: #243b53;
+}
+
+.catalog-autocomplete-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  overflow-y: auto;
+}
+
+.catalog-autocomplete-menu.hidden {
+  display: none;
+}
+
+.catalog-autocomplete-option {
+  display: block;
+  width: 100%;
+  border: none;
+  background: #fff;
+  color: #2c3e50;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.catalog-autocomplete-option:hover,
+.catalog-autocomplete-option.is-active {
+  background: #f5f8fb;
+}
+
+.catalog-autocomplete-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.catalog-autocomplete-menu::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.catalog-autocomplete-menu::-webkit-scrollbar-thumb {
+  background: #b9c3cf;
+  border-radius: 4px;
+}
+
+.catalog-autocomplete-menu::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .data-table .spl-regime-select {
   min-width: 140px;
   width: 140px;

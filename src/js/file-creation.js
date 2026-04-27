@@ -316,18 +316,18 @@ const SPLSCRAP_SCRAP_TYPE_OF_GOODS = "FG";
 const SPLSCRAP_SCRAP_ALLOWED_UOM = ["KG", "PCS"];
 const manualCatalogState = {
   unitOfMeasure: {
-    datalistId: "manualCatalogUnitOfMeasure",
-    scrapDatalistId: "manualCatalogUnitOfMeasureScrap",
     options: [],
     optionsSet: new Set(),
   },
   countryOfOrigin: {
-    datalistId: "manualCatalogCountryOfOrigin",
     options: [],
     optionsSet: new Set(),
   },
 };
 let manualCatalogLoadPromise = null;
+let activeCatalogAutocompleteInput = null;
+const CATALOG_AUTOCOMPLETE_MAX_VISIBLE_OPTIONS = 10;
+const CATALOG_AUTOCOMPLETE_WIDTH_PX = 140;
 
 function normalizeCatalogCodeValue(value) {
   return String(value || "").trim().toUpperCase();
@@ -338,26 +338,6 @@ function getCatalogKeyForColumn(column) {
   if (column.key === "unitOfMeasure") return "unitOfMeasure";
   if (column.key === "countryOfOrigin") return "countryOfOrigin";
   return "";
-}
-
-function ensureCatalogDatalistElement(id) {
-  let datalist = document.getElementById(id);
-  if (!datalist) {
-    datalist = document.createElement("datalist");
-    datalist.id = id;
-    document.body.appendChild(datalist);
-  }
-  return datalist;
-}
-
-function renderCatalogOptionsDatalist(id, options = []) {
-  const datalist = ensureCatalogDatalistElement(id);
-  datalist.innerHTML = "";
-  options.forEach((optionValue) => {
-    const option = document.createElement("option");
-    option.value = optionValue;
-    datalist.appendChild(option);
-  });
 }
 
 function applyManualCatalogOptions(payload = {}) {
@@ -379,21 +359,6 @@ function applyManualCatalogOptions(payload = {}) {
     new Set(countryOfOrigin),
   ).sort((left, right) => left.localeCompare(right));
   manualCatalogState.countryOfOrigin.optionsSet = new Set(
-    manualCatalogState.countryOfOrigin.options,
-  );
-
-  renderCatalogOptionsDatalist(
-    manualCatalogState.unitOfMeasure.datalistId,
-    manualCatalogState.unitOfMeasure.options,
-  );
-  renderCatalogOptionsDatalist(
-    manualCatalogState.unitOfMeasure.scrapDatalistId,
-    SPLSCRAP_SCRAP_ALLOWED_UOM.filter((code) =>
-      manualCatalogState.unitOfMeasure.optionsSet.has(code),
-    ),
-  );
-  renderCatalogOptionsDatalist(
-    manualCatalogState.countryOfOrigin.datalistId,
     manualCatalogState.countryOfOrigin.options,
   );
 
@@ -427,27 +392,198 @@ async function loadManualCatalogOptions(forceRefresh = false) {
   return manualCatalogLoadPromise;
 }
 
-function getCatalogInputDatalistId(input) {
-  if (!input) return "";
+function getCatalogAutocompleteUi(input) {
+  if (!input) return null;
+  if (input._catalogAutocompleteUi) {
+    const existingUi = input._catalogAutocompleteUi;
+    const parent = input.parentNode;
+    if (
+      existingUi.wrapper &&
+      !existingUi.wrapper.isConnected &&
+      parent &&
+      parent !== existingUi.wrapper
+    ) {
+      parent.insertBefore(existingUi.wrapper, input);
+      existingUi.wrapper.appendChild(input);
+      existingUi.wrapper.appendChild(existingUi.toggle);
+      existingUi.wrapper.appendChild(existingUi.menu);
+    }
+    return existingUi;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "catalog-autocomplete";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "catalog-autocomplete-toggle";
+  toggle.setAttribute("aria-label", "Mostrar opciones");
+  toggle.innerHTML = "&#9662;";
+
+  const menu = document.createElement("div");
+  menu.className = "catalog-autocomplete-menu hidden";
+
+  const parent = input.parentNode;
+  if (parent) {
+    parent.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+    wrapper.appendChild(toggle);
+    wrapper.appendChild(menu);
+  }
+
+  input.classList.add("catalog-autocomplete-input");
+  input.autocomplete = "off";
+
+  input._catalogAutocompleteUi = { wrapper, toggle, menu };
+  return input._catalogAutocompleteUi;
+}
+
+function updateCatalogAutocompleteWidth(input) {
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui || !ui.wrapper) return;
+
+  ui.wrapper.style.width = `${CATALOG_AUTOCOMPLETE_WIDTH_PX}px`;
+  ui.wrapper.style.minWidth = `${CATALOG_AUTOCOMPLETE_WIDTH_PX}px`;
+  input.style.width = "100%";
+}
+
+function getCatalogOptionsForInput(input) {
+  if (!input) return [];
   const catalogKey = input.dataset.catalogKey;
-  if (!catalogKey || !manualCatalogState[catalogKey]) return "";
+  if (!catalogKey || !manualCatalogState[catalogKey]) return [];
 
   if (
     catalogKey === "unitOfMeasure" &&
     input.dataset.scrapRestrictUom === "true"
   ) {
-    return manualCatalogState.unitOfMeasure.scrapDatalistId;
+    return SPLSCRAP_SCRAP_ALLOWED_UOM.filter((code) =>
+      manualCatalogState.unitOfMeasure.optionsSet.has(code),
+    );
   }
 
-  return manualCatalogState[catalogKey].datalistId;
+  return manualCatalogState[catalogKey].options;
+}
+
+function getCatalogFilteredOptions(input) {
+  const options = getCatalogOptionsForInput(input);
+  const query = normalizeCatalogCodeValue(input.value);
+  if (!query) return options;
+
+  const startsWith = [];
+  const includes = [];
+  options.forEach((optionValue) => {
+    if (optionValue.startsWith(query)) {
+      startsWith.push(optionValue);
+    } else if (optionValue.includes(query)) {
+      includes.push(optionValue);
+    }
+  });
+  return [...startsWith, ...includes];
+}
+
+function closeCatalogAutocompleteMenu(input) {
+  if (!input) return;
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+  ui.menu.classList.add("hidden");
+  ui.wrapper.classList.remove("catalog-autocomplete-open");
+  delete input.dataset.catalogActiveIndex;
+  if (activeCatalogAutocompleteInput === input) {
+    activeCatalogAutocompleteInput = null;
+  }
+}
+
+function closeAllCatalogAutocompleteMenus(exceptInput = null) {
+  document
+    .querySelectorAll("input[data-catalog-key]")
+    .forEach((input) => {
+      if (input !== exceptInput) closeCatalogAutocompleteMenu(input);
+    });
+}
+
+function updateCatalogAutocompleteActiveOption(input, nextIndex) {
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+
+  const options = Array.from(
+    ui.menu.querySelectorAll(".catalog-autocomplete-option"),
+  );
+  if (!options.length) {
+    delete input.dataset.catalogActiveIndex;
+    return;
+  }
+
+  const boundedIndex = Math.max(0, Math.min(nextIndex, options.length - 1));
+  input.dataset.catalogActiveIndex = String(boundedIndex);
+
+  options.forEach((optionButton, index) => {
+    optionButton.classList.toggle("is-active", index === boundedIndex);
+  });
+
+  const activeOption = options[boundedIndex];
+  if (activeOption) {
+    activeOption.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function selectCatalogAutocompleteOption(input, optionValue) {
+  if (!input) return;
+  input.value = normalizeCatalogCodeValue(optionValue);
+  input.setCustomValidity("");
+  if (input.dataset.catalogKey === "unitOfMeasure") {
+    handleSplScrapUnitOfMeasureInput(
+      input,
+      input.dataset.scrapRestrictUom === "true",
+    );
+  }
+  closeCatalogAutocompleteMenu(input);
+}
+
+function renderCatalogAutocompleteMenu(input) {
+  if (!input) return;
+
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+
+  closeAllCatalogAutocompleteMenus(input);
+  updateCatalogAutocompleteWidth(input);
+  const filteredOptions = getCatalogFilteredOptions(input);
+  ui.menu.innerHTML = "";
+
+  if (!filteredOptions.length) {
+    closeCatalogAutocompleteMenu(input);
+    return;
+  }
+
+  filteredOptions.forEach((optionValue, index) => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "catalog-autocomplete-option";
+    optionButton.textContent = optionValue;
+    optionButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      selectCatalogAutocompleteOption(input, optionValue);
+    });
+    ui.menu.appendChild(optionButton);
+
+    if (index === 0) {
+      optionButton.classList.add("is-active");
+    }
+  });
+
+  ui.menu.style.maxHeight = `${CATALOG_AUTOCOMPLETE_MAX_VISIBLE_OPTIONS * 36}px`;
+  ui.menu.classList.remove("hidden");
+  ui.wrapper.classList.add("catalog-autocomplete-open");
+  activeCatalogAutocompleteInput = input;
+  updateCatalogAutocompleteActiveOption(input, 0);
 }
 
 function syncCatalogAutocompleteInput(input) {
   if (!input) return;
-
-  const datalistId = getCatalogInputDatalistId(input);
-  if (datalistId) input.setAttribute("list", datalistId);
-  else input.removeAttribute("list");
+  updateCatalogAutocompleteWidth(input);
+  if (activeCatalogAutocompleteInput === input) {
+    renderCatalogAutocompleteMenu(input);
+  }
 }
 
 function syncAllCatalogAutocompleteInputs() {
@@ -494,6 +630,7 @@ function bindCatalogAutocompleteInput(input, catalogKey) {
 
   input.dataset.catalogKey = catalogKey;
   input.spellcheck = false;
+  const ui = getCatalogAutocompleteUi(input);
   syncCatalogAutocompleteInput(input);
 
   if (input.dataset.catalogAutocompleteBound === "true") return;
@@ -507,17 +644,97 @@ function bindCatalogAutocompleteInput(input, catalogKey) {
       handleSplScrapUnitOfMeasureInput(input, false);
     }
     input.setCustomValidity("");
+    renderCatalogAutocompleteMenu(input);
   });
 
   input.addEventListener("blur", () => {
-    if (
-      catalogKey === "unitOfMeasure" &&
-      input.dataset.scrapRestrictUom === "true"
-    ) {
-      handleSplScrapUnitOfMeasureInput(input, true);
-    }
-    validateCatalogCodeInput(input, { reportIfInvalid: true });
+    window.setTimeout(() => {
+      if (
+        catalogKey === "unitOfMeasure" &&
+        input.dataset.scrapRestrictUom === "true"
+      ) {
+        handleSplScrapUnitOfMeasureInput(input, true);
+      }
+      closeCatalogAutocompleteMenu(input);
+      validateCatalogCodeInput(input, { reportIfInvalid: true });
+    }, 120);
   });
+
+  input.addEventListener("focus", () => {
+    renderCatalogAutocompleteMenu(input);
+  });
+
+  input.addEventListener("click", () => {
+    renderCatalogAutocompleteMenu(input);
+  });
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      const ui = getCatalogAutocompleteUi(input);
+      if (!ui || ui.menu.classList.contains("hidden")) return;
+
+      const optionButtons = Array.from(
+        ui.menu.querySelectorAll(".catalog-autocomplete-option"),
+      );
+      if (!optionButtons.length) return;
+
+      const currentIndex = Number.parseInt(
+        input.dataset.catalogActiveIndex || "0",
+        10,
+      );
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        event.stopPropagation();
+        updateCatalogAutocompleteActiveOption(input, currentIndex + 1);
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        updateCatalogAutocompleteActiveOption(input, currentIndex - 1);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const nextIndex = Number.parseInt(
+          input.dataset.catalogActiveIndex || "0",
+          10,
+        );
+        const activeOption = optionButtons[nextIndex] || optionButtons[0];
+        if (activeOption) {
+          selectCatalogAutocompleteOption(input, activeOption.textContent || "");
+        }
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCatalogAutocompleteMenu(input);
+      }
+    },
+    true,
+  );
+
+  if (ui && ui.toggle) {
+    ui.toggle.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    ui.toggle.addEventListener("click", () => {
+      input.focus();
+      const isHidden = ui.menu.classList.contains("hidden");
+      if (isHidden) {
+        renderCatalogAutocompleteMenu(input);
+      } else {
+        closeCatalogAutocompleteMenu(input);
+      }
+    });
+  }
 
   input.dataset.catalogAutocompleteBound = "true";
 }
@@ -651,10 +868,6 @@ function addFinishedProductRow(values = {}) {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
       });
-    }
-    const catalogKey = getCatalogKeyForColumn(col);
-    if (catalogKey) {
-      bindCatalogAutocompleteInput(input, catalogKey);
     }
     if (col.derived) {
       input.readOnly = true;
