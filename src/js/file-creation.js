@@ -312,6 +312,8 @@ const splAddRowBtn = document.getElementById("splAddRowBtn");
 const splMetaContainer = document.getElementById("splMetaFields");
 const splMetaInputs = {};
 let splInitialized = false;
+const SPLSCRAP_SCRAP_TYPE_OF_GOODS = "FG";
+const SPLSCRAP_SCRAP_ALLOWED_UOM = ["KG", "PCS"];
 
 function buildFinishedProductTable() {
   if (!fpHead || !fpBody) return;
@@ -395,6 +397,14 @@ function addFinishedProductRow(values = {}) {
     if (col.key === "partNumber") {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
+      });
+    }
+    if (col.key === "unitOfMeasure" && input.tagName === "INPUT") {
+      input.addEventListener("input", () => {
+        handleSplScrapUnitOfMeasureInput(input, false);
+      });
+      input.addEventListener("blur", () => {
+        handleSplScrapUnitOfMeasureInput(input, true);
       });
     }
     if (col.derived) {
@@ -559,6 +569,7 @@ function setSplScrapRows(rows = []) {
 
   splBody.innerHTML = "";
   list.forEach((row) => addSplScrapRow(row));
+  applySplScrapShipmentMode();
   updateTableScroll(splBody);
 }
 // Utilidad para scroll interno en tablas si hay más de 6 filas
@@ -920,6 +931,146 @@ function updateSplScrapRowComputedFields(rowElement) {
   );
 }
 
+function isSplScrapShipmentScrap(value) {
+  return String(value || "").trim().toLowerCase() === "scrap";
+}
+
+function getSplScrapIsScrapMode() {
+  return isSplScrapShipmentScrap(splMetaInputs["Type of shipment"]?.value);
+}
+
+function handleSplScrapUnitOfMeasureInput(input, finalize = false) {
+  if (!input) return;
+
+  let nextValue = String(input.value || "").trim().toUpperCase();
+  const isRestricted = input.dataset.scrapRestrictUom === "true";
+
+  if (isRestricted) {
+    if (finalize) {
+      if (
+        nextValue !== "" &&
+        !SPLSCRAP_SCRAP_ALLOWED_UOM.includes(nextValue)
+      ) {
+        nextValue = input.dataset.lastValidScrapUom || "";
+      }
+    } else if (
+      nextValue !== "" &&
+      !SPLSCRAP_SCRAP_ALLOWED_UOM.some((option) => option.startsWith(nextValue))
+    ) {
+      nextValue = input.dataset.lastValidScrapUom || "";
+    }
+
+    if (SPLSCRAP_SCRAP_ALLOWED_UOM.includes(nextValue)) {
+      input.dataset.lastValidScrapUom = nextValue;
+    }
+  }
+
+  input.value = nextValue;
+}
+
+function applySplScrapTypeOfGoodsRestriction(isScrap) {
+  const typeOfGoodsInput = splMetaInputs["Type of goods"];
+  if (!typeOfGoodsInput) return;
+
+  const options = Array.from(typeOfGoodsInput.options || []);
+
+  if (isScrap) {
+    if (typeOfGoodsInput.dataset.scrapLocked !== "true") {
+      typeOfGoodsInput.dataset.nonScrapValue = typeOfGoodsInput.value || "";
+    }
+    options.forEach((option) => {
+      if (!option.value) return;
+      option.disabled = option.value !== SPLSCRAP_SCRAP_TYPE_OF_GOODS;
+    });
+    typeOfGoodsInput.value = SPLSCRAP_SCRAP_TYPE_OF_GOODS;
+    typeOfGoodsInput.disabled = true;
+    typeOfGoodsInput.dataset.scrapLocked = "true";
+    return;
+  }
+
+  options.forEach((option) => {
+    option.disabled = false;
+  });
+  typeOfGoodsInput.disabled = false;
+  if (typeOfGoodsInput.dataset.scrapLocked === "true") {
+    typeOfGoodsInput.value = typeOfGoodsInput.dataset.nonScrapValue || "";
+  }
+  delete typeOfGoodsInput.dataset.scrapLocked;
+  delete typeOfGoodsInput.dataset.nonScrapValue;
+}
+
+function applySplScrapRowShipmentMode(rowElement, isScrap) {
+  if (!rowElement) return;
+
+  const addedValueInput = getSplScrapRowField(rowElement, "addedValueUsd");
+  if (addedValueInput) {
+    if (isScrap) {
+      if (addedValueInput.dataset.scrapLocked !== "true") {
+        addedValueInput.dataset.nonScrapValue = addedValueInput.value || "";
+      }
+      addedValueInput.value = "0";
+      addedValueInput.readOnly = true;
+      addedValueInput.tabIndex = -1;
+      addedValueInput.setAttribute("aria-readonly", "true");
+      addedValueInput.dataset.scrapLocked = "true";
+    } else {
+      addedValueInput.readOnly = false;
+      addedValueInput.tabIndex = 0;
+      addedValueInput.removeAttribute("aria-readonly");
+      if (addedValueInput.dataset.scrapLocked === "true") {
+        addedValueInput.value = addedValueInput.dataset.nonScrapValue || "";
+      }
+      delete addedValueInput.dataset.scrapLocked;
+      delete addedValueInput.dataset.nonScrapValue;
+    }
+  }
+
+  const unitOfMeasureInput = getSplScrapRowField(rowElement, "unitOfMeasure");
+  if (unitOfMeasureInput) {
+    if (isScrap) {
+      if (unitOfMeasureInput.dataset.scrapRestrictUom !== "true") {
+        unitOfMeasureInput.dataset.nonScrapValue =
+          unitOfMeasureInput.value || "";
+      }
+      unitOfMeasureInput.dataset.scrapRestrictUom = "true";
+      unitOfMeasureInput.placeholder = "KG o PCS";
+      unitOfMeasureInput.title =
+        "Solo se permite KG o PCS cuando Type of shipment es Scrap.";
+      handleSplScrapUnitOfMeasureInput(unitOfMeasureInput, false);
+      if (
+        unitOfMeasureInput.value &&
+        !SPLSCRAP_SCRAP_ALLOWED_UOM.includes(unitOfMeasureInput.value)
+      ) {
+        unitOfMeasureInput.value = "";
+      }
+    } else {
+      unitOfMeasureInput.dataset.scrapRestrictUom = "false";
+      unitOfMeasureInput.placeholder = "Unit Of Measure";
+      unitOfMeasureInput.removeAttribute("title");
+      if (
+        unitOfMeasureInput.dataset.nonScrapValue !== undefined &&
+        String(unitOfMeasureInput.value || "").trim() === ""
+      ) {
+        unitOfMeasureInput.value = unitOfMeasureInput.dataset.nonScrapValue;
+      }
+      delete unitOfMeasureInput.dataset.nonScrapValue;
+      delete unitOfMeasureInput.dataset.lastValidScrapUom;
+    }
+  }
+
+  updateSplScrapRowComputedFields(rowElement);
+}
+
+function applySplScrapShipmentMode() {
+  const isScrap = getSplScrapIsScrapMode();
+  applySplScrapTypeOfGoodsRestriction(isScrap);
+
+  if (!splBody) return;
+  splBody.querySelectorAll("tr").forEach((rowElement) => {
+    applySplScrapRowShipmentMode(rowElement, isScrap);
+  });
+}
+
 function buildSplScrapMetaFields() {
   if (!splMetaContainer) return;
   splMetaContainer.innerHTML = "";
@@ -963,18 +1114,25 @@ function buildSplScrapMetaFields() {
     if (field.placeholder) input.placeholder = field.placeholder;
     if (field.pattern) input.setAttribute("pattern", field.pattern);
     if (field.title) input.title = field.title;
-      if (field.key === "Expected date of arrival") {
-        input.maxLength = 8;
-        input.addEventListener("input", (e) => {
-          e.target.value = formatYmdDigits(e.target.value);
-        });
-      }
+    if (field.key === "Expected date of arrival") {
+      input.maxLength = 8;
+      input.addEventListener("input", (e) => {
+        e.target.value = formatYmdDigits(e.target.value);
+      });
+    }
+    if (field.key === "Type of shipment") {
+      input.addEventListener("change", () => {
+        applySplScrapShipmentMode();
+      });
+    }
 
     wrapper.appendChild(label);
     wrapper.appendChild(input);
     splMetaContainer.appendChild(wrapper);
     splMetaInputs[field.key] = input;
   });
+
+  applySplScrapShipmentMode();
 }
 
 function buildSplScrapTable() {
@@ -1169,6 +1327,7 @@ function addSplScrapRow(values = {}) {
   row.appendChild(actionsTd);
 
   splBody.appendChild(row);
+  applySplScrapRowShipmentMode(row, getSplScrapIsScrapMode());
   updateSplScrapRowComputedFields(row);
   updateTableScroll(splBody);
 }

@@ -7,6 +7,7 @@ const PART_NUMBER_RE = /^[A-Z0-9 ._\/-]+$/;
 const isBlank = (v) => v === null || v === undefined || String(v).trim() === "";
 const DEFAULT_ALLOW_EMPTY_MANDATORY_FIELDS =
   (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() === "true";
+const SPLSCRAP_SCRAP_ALLOWED_UOM = new Set(["KG", "PCS"]);
 
 const normalizeNaftaFlag = (value) => {
   if (value === null || value === undefined) return "";
@@ -15,6 +16,14 @@ const normalizeNaftaFlag = (value) => {
   if (v === "Y" || v === "YES") return "Y";
   if (v === "N" || v === "NO") return "N";
   return v;
+};
+
+const parseNumericValue = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/,/g, "");
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 /**
@@ -284,6 +293,55 @@ const applyBusinessValidations = async (data, documentType) => {
             row: rowNum,
           });
         }
+      }
+    });
+  }
+
+  if (documentType === "splScrap") {
+    records.forEach((record, recordIndex) => {
+      const rowNum = recordIndex + 2;
+      const shipment = String(record["Type of shipment"] || "").trim();
+
+      if (shipment !== "Scrap") return;
+
+      const typeOfGoods = String(record["Type of goods"] || "")
+        .trim()
+        .toUpperCase();
+      if (typeOfGoods !== "FG") {
+        errors.push({
+          type: "Business Rule Violation",
+          message: `Row ${rowNum}: "Type of goods" must be "FG" when "Type of shipment" is "Scrap".`,
+          field: "Type of goods",
+          row: rowNum,
+          value: record["Type of goods"],
+          expected: ["FG"],
+        });
+      }
+
+      const addedValue = parseNumericValue(record["Added Value (USD)"]);
+      if (addedValue !== 0) {
+        errors.push({
+          type: "Business Rule Violation",
+          message: `Row ${rowNum}: "Added Value (USD)" must be 0 when "Type of shipment" is "Scrap".`,
+          field: "Added Value (USD)",
+          row: rowNum,
+          value: record["Added Value (USD)"],
+          expected: 0,
+        });
+      }
+
+      const unitOfMeasure = String(record["Unit Of Measure"] || "")
+        .trim()
+        .toUpperCase();
+      if (!SPLSCRAP_SCRAP_ALLOWED_UOM.has(unitOfMeasure)) {
+        errors.push({
+          type: "Business Rule Violation",
+          message: `Row ${rowNum}: "Unit Of Measure" must be "KG" or "PCS" when "Type of shipment" is "Scrap".`,
+          field: "Unit Of Measure",
+          row: rowNum,
+          value: record["Unit Of Measure"],
+          expected: ["KG", "PCS"],
+        });
       }
     });
   }

@@ -151,6 +151,39 @@ function normalizeSplPowerSource(value) {
   }
   return raw;
 }
+
+function isSplScrapShipmentScrap(value) {
+  return normalizeSplShipment(value) === "Scrap";
+}
+
+function parseSplScrapNumber(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/,/g, "");
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatSplScrapNumber(value) {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round((value + Number.EPSILON) * 1e8) / 1e8;
+  return rounded.toFixed(8).replace(/\.?0+$/, "");
+}
+
+function recalculateSplScrapTotalValue(record) {
+  const quantity = parseSplScrapNumber(record["Quantity"]);
+  const unitValue = parseSplScrapNumber(record["Unit Value (USD)"]);
+  const addedValue = parseSplScrapNumber(record["Added Value (USD)"]);
+
+  if (quantity === null || unitValue === null || addedValue === null) {
+    return;
+  }
+
+  record["Total Value (USD)"] = formatSplScrapNumber(
+    (unitValue + addedValue) * quantity
+  );
+}
+
 function coerceExcelDate(value) {
   if (value == null || value === "") return null;
 
@@ -345,6 +378,14 @@ const applyTransformations = (parsedData, documentType) => {
     // Net Cost
     if (record["Net Cost"] !== undefined) {
       record["Net Cost"] = normalizeNetCost(record["Net Cost"]);
+    }
+    if (
+      documentType === "splScrap" &&
+      isSplScrapShipmentScrap(record["Type of shipment"])
+    ) {
+      record["Type of goods"] = "FG";
+      record["Added Value (USD)"] = 0;
+      recalculateSplScrapTotalValue(record);
     }
 
     // NAFTA masking: si NAFTA !== "Y" limpia dependientes
