@@ -23,6 +23,9 @@ router.post(
 // Ruta para validar datos manuales (file creation)
 router.post('/validate', API_PROTECTED, fileController.validateManualData);
 
+// Catalogos dinamicos para creacion/edicion manual
+router.get('/catalog-options', API_PROTECTED, fileController.getManualCatalogOptions);
+
 // Ruta para crear archivo desde datos manuales (file creation)
 router.post('/create-manual', API_PROTECTED, fileController.createManualFile);
 

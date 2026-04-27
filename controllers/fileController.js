@@ -13,6 +13,8 @@ const FinishedProduct = require("../models/FinishedProduct");
 const BillOfMaterials = require("../models/BOM");
 const RawMaterial = require("../models/RawMaterial");
 const SPLScrap = require("../models/SPLScrap");
+const { getUOMOptions } = require("../data/uomCatalog");
+const { getCountryOptions } = require("../data/countryCatalog");
 
 // Middleware de Multer (configúralo una vez)
 const multer = require("multer");
@@ -465,6 +467,23 @@ const validateManualData = async (req, res) => {
   });
 };
 
+const getManualCatalogOptions = async (_req, res) => {
+  try {
+    const unitOfMeasure = getUOMOptions().map((option) => option.code);
+    const countryOfOrigin = getCountryOptions();
+
+    return res.status(200).json({
+      unitOfMeasure,
+      countryOfOrigin,
+    });
+  } catch (error) {
+    console.error("Error al cargar catalogos manuales:", error);
+    return res.status(500).json({
+      message: "Error interno al cargar catalogos.",
+    });
+  }
+};
+
 const createManualFile = async (req, res) => {
   const { documentType, rows, outputFormat, displayName } = req.body || {};
   const normalizedName = normalizeAdminFileName(displayName);
@@ -872,6 +891,7 @@ module.exports = {
   uploadAndConvertFile,
   getConvertedFile,
   getErrorReport,
+  getManualCatalogOptions,
   validateManualData,
   createManualFile,
   getAdminFilesByType,

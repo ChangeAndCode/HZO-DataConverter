@@ -314,6 +314,259 @@ const splMetaInputs = {};
 let splInitialized = false;
 const SPLSCRAP_SCRAP_TYPE_OF_GOODS = "FG";
 const SPLSCRAP_SCRAP_ALLOWED_UOM = ["KG", "PCS"];
+const manualCatalogState = {
+  unitOfMeasure: {
+    datalistId: "manualCatalogUnitOfMeasure",
+    scrapDatalistId: "manualCatalogUnitOfMeasureScrap",
+    options: [],
+    optionsSet: new Set(),
+  },
+  countryOfOrigin: {
+    datalistId: "manualCatalogCountryOfOrigin",
+    options: [],
+    optionsSet: new Set(),
+  },
+};
+let manualCatalogLoadPromise = null;
+
+function normalizeCatalogCodeValue(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function getCatalogKeyForColumn(column) {
+  if (!column || !column.key) return "";
+  if (column.key === "unitOfMeasure") return "unitOfMeasure";
+  if (column.key === "countryOfOrigin") return "countryOfOrigin";
+  return "";
+}
+
+function ensureCatalogDatalistElement(id) {
+  let datalist = document.getElementById(id);
+  if (!datalist) {
+    datalist = document.createElement("datalist");
+    datalist.id = id;
+    document.body.appendChild(datalist);
+  }
+  return datalist;
+}
+
+function renderCatalogOptionsDatalist(id, options = []) {
+  const datalist = ensureCatalogDatalistElement(id);
+  datalist.innerHTML = "";
+  options.forEach((optionValue) => {
+    const option = document.createElement("option");
+    option.value = optionValue;
+    datalist.appendChild(option);
+  });
+}
+
+function applyManualCatalogOptions(payload = {}) {
+  const unitOfMeasure = Array.isArray(payload.unitOfMeasure)
+    ? payload.unitOfMeasure.map(normalizeCatalogCodeValue).filter(Boolean)
+    : [];
+  const countryOfOrigin = Array.isArray(payload.countryOfOrigin)
+    ? payload.countryOfOrigin.map(normalizeCatalogCodeValue).filter(Boolean)
+    : [];
+
+  manualCatalogState.unitOfMeasure.options = Array.from(
+    new Set(unitOfMeasure),
+  ).sort((left, right) => left.localeCompare(right));
+  manualCatalogState.unitOfMeasure.optionsSet = new Set(
+    manualCatalogState.unitOfMeasure.options,
+  );
+
+  manualCatalogState.countryOfOrigin.options = Array.from(
+    new Set(countryOfOrigin),
+  ).sort((left, right) => left.localeCompare(right));
+  manualCatalogState.countryOfOrigin.optionsSet = new Set(
+    manualCatalogState.countryOfOrigin.options,
+  );
+
+  renderCatalogOptionsDatalist(
+    manualCatalogState.unitOfMeasure.datalistId,
+    manualCatalogState.unitOfMeasure.options,
+  );
+  renderCatalogOptionsDatalist(
+    manualCatalogState.unitOfMeasure.scrapDatalistId,
+    SPLSCRAP_SCRAP_ALLOWED_UOM.filter((code) =>
+      manualCatalogState.unitOfMeasure.optionsSet.has(code),
+    ),
+  );
+  renderCatalogOptionsDatalist(
+    manualCatalogState.countryOfOrigin.datalistId,
+    manualCatalogState.countryOfOrigin.options,
+  );
+
+  syncAllCatalogAutocompleteInputs();
+}
+
+async function loadManualCatalogOptions(forceRefresh = false) {
+  if (forceRefresh) {
+    manualCatalogLoadPromise = null;
+  }
+  if (manualCatalogLoadPromise) return manualCatalogLoadPromise;
+
+  manualCatalogLoadPromise = fetch("/api/files/catalog-options")
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || "No se pudieron cargar los catalogos.");
+      }
+      applyManualCatalogOptions(data);
+      return data;
+    })
+    .catch((error) => {
+      console.warn("No se pudieron cargar los catalogos manuales", error);
+      applyManualCatalogOptions({});
+      return {
+        unitOfMeasure: [],
+        countryOfOrigin: [],
+      };
+    });
+
+  return manualCatalogLoadPromise;
+}
+
+function getCatalogInputDatalistId(input) {
+  if (!input) return "";
+  const catalogKey = input.dataset.catalogKey;
+  if (!catalogKey || !manualCatalogState[catalogKey]) return "";
+
+  if (
+    catalogKey === "unitOfMeasure" &&
+    input.dataset.scrapRestrictUom === "true"
+  ) {
+    return manualCatalogState.unitOfMeasure.scrapDatalistId;
+  }
+
+  return manualCatalogState[catalogKey].datalistId;
+}
+
+function syncCatalogAutocompleteInput(input) {
+  if (!input) return;
+
+  const datalistId = getCatalogInputDatalistId(input);
+  if (datalistId) input.setAttribute("list", datalistId);
+  else input.removeAttribute("list");
+}
+
+function syncAllCatalogAutocompleteInputs() {
+  document
+    .querySelectorAll("input[data-catalog-key]")
+    .forEach((input) => syncCatalogAutocompleteInput(input));
+}
+
+function validateCatalogCodeInput(input, { reportIfInvalid = false } = {}) {
+  if (!input) return true;
+
+  const catalogKey = input.dataset.catalogKey;
+  if (!catalogKey || !manualCatalogState[catalogKey]) return true;
+
+  const nextValue = normalizeCatalogCodeValue(input.value);
+  input.value = nextValue;
+
+  if (!nextValue) {
+    input.setCustomValidity("");
+    return true;
+  }
+
+  const allowedSet =
+    catalogKey === "unitOfMeasure" && input.dataset.scrapRestrictUom === "true"
+      ? new Set(SPLSCRAP_SCRAP_ALLOWED_UOM)
+      : manualCatalogState[catalogKey].optionsSet;
+
+  if (allowedSet.size > 0 && !allowedSet.has(nextValue)) {
+    const message =
+      catalogKey === "countryOfOrigin"
+        ? "Selecciona un codigo valido de Country of Origin."
+        : "Selecciona un codigo valido de Unit of Measure.";
+    input.setCustomValidity(message);
+    if (reportIfInvalid) input.reportValidity();
+    return false;
+  }
+
+  input.setCustomValidity("");
+  return true;
+}
+
+function bindCatalogAutocompleteInput(input, catalogKey) {
+  if (!input || !catalogKey) return;
+
+  input.dataset.catalogKey = catalogKey;
+  input.spellcheck = false;
+  syncCatalogAutocompleteInput(input);
+
+  if (input.dataset.catalogAutocompleteBound === "true") return;
+
+  input.addEventListener("input", () => {
+    input.value = normalizeCatalogCodeValue(input.value);
+    if (
+      catalogKey === "unitOfMeasure" &&
+      input.dataset.scrapRestrictUom === "true"
+    ) {
+      handleSplScrapUnitOfMeasureInput(input, false);
+    }
+    input.setCustomValidity("");
+  });
+
+  input.addEventListener("blur", () => {
+    if (
+      catalogKey === "unitOfMeasure" &&
+      input.dataset.scrapRestrictUom === "true"
+    ) {
+      handleSplScrapUnitOfMeasureInput(input, true);
+    }
+    validateCatalogCodeInput(input, { reportIfInvalid: true });
+  });
+
+  input.dataset.catalogAutocompleteBound = "true";
+}
+
+function bindCatalogInputsForRow(rowElement, columns = []) {
+  if (!rowElement) return;
+
+  const editors = Array.from(rowElement.querySelectorAll("input, select"));
+  columns.forEach((column, index) => {
+    const catalogKey = getCatalogKeyForColumn(column);
+    const editor = editors[index];
+    if (catalogKey && editor && editor.tagName === "INPUT") {
+      bindCatalogAutocompleteInput(editor, catalogKey);
+    }
+  });
+}
+
+function getCatalogInputsForDocumentType(documentType) {
+  if (documentType === "finishedProduct") {
+    return fpBody ? Array.from(fpBody.querySelectorAll("input[data-catalog-key]")) : [];
+  }
+  if (documentType === "rawMaterial") {
+    return rmBody ? Array.from(rmBody.querySelectorAll("input[data-catalog-key]")) : [];
+  }
+  if (documentType === "billOfMaterials") {
+    return bmBody ? Array.from(bmBody.querySelectorAll("input[data-catalog-key]")) : [];
+  }
+  if (documentType === "splScrap") {
+    return splBody ? Array.from(splBody.querySelectorAll("input[data-catalog-key]")) : [];
+  }
+  return [];
+}
+
+function validateCatalogInputsForDocumentType(documentType) {
+  const inputs = getCatalogInputsForDocumentType(documentType);
+  const firstInvalid = inputs.find(
+    (input) => !validateCatalogCodeInput(input, { reportIfInvalid: false }),
+  );
+
+  if (!firstInvalid) return true;
+
+  const fieldLabel = firstInvalid.placeholder || firstInvalid.name || "Campo";
+  renderErrorList([
+    { message: `${fieldLabel}: selecciona un codigo valido del catalogo.` },
+  ]);
+  firstInvalid.focus();
+  firstInvalid.reportValidity();
+  return false;
+}
 
 function buildFinishedProductTable() {
   if (!fpHead || !fpBody) return;
@@ -399,13 +652,9 @@ function addFinishedProductRow(values = {}) {
         input.value = input.value.toUpperCase();
       });
     }
-    if (col.key === "unitOfMeasure" && input.tagName === "INPUT") {
-      input.addEventListener("input", () => {
-        handleSplScrapUnitOfMeasureInput(input, false);
-      });
-      input.addEventListener("blur", () => {
-        handleSplScrapUnitOfMeasureInput(input, true);
-      });
+    const catalogKey = getCatalogKeyForColumn(col);
+    if (catalogKey) {
+      bindCatalogAutocompleteInput(input, catalogKey);
     }
     if (col.derived) {
       input.readOnly = true;
@@ -505,6 +754,7 @@ function addFinishedProductRow(values = {}) {
   row.appendChild(actionsTd);
 
   fpBody.appendChild(row);
+  bindCatalogInputsForRow(row, finishedProductColumns);
   updateTableScroll(fpBody);
 }
 
@@ -704,6 +954,7 @@ function addRawMaterialRow(values = {}) {
   row.appendChild(actionsTd);
 
   rmBody.appendChild(row);
+  bindCatalogInputsForRow(row, rawMaterialColumns);
   updateTableScroll(rmBody);
 }
 
@@ -840,6 +1091,7 @@ function addBillOfMaterialsRow(values = {}) {
   row.appendChild(actionsTd);
 
   bmBody.appendChild(row);
+  bindCatalogInputsForRow(row, billOfMaterialsColumns);
   updateTableScroll(bmBody);
 }
 
@@ -1043,6 +1295,7 @@ function applySplScrapRowShipmentMode(rowElement, isScrap) {
       ) {
         unitOfMeasureInput.value = "";
       }
+      syncCatalogAutocompleteInput(unitOfMeasureInput);
     } else {
       unitOfMeasureInput.dataset.scrapRestrictUom = "false";
       unitOfMeasureInput.placeholder = "Unit Of Measure";
@@ -1055,6 +1308,7 @@ function applySplScrapRowShipmentMode(rowElement, isScrap) {
       }
       delete unitOfMeasureInput.dataset.nonScrapValue;
       delete unitOfMeasureInput.dataset.lastValidScrapUom;
+      syncCatalogAutocompleteInput(unitOfMeasureInput);
     }
   }
 
@@ -1327,6 +1581,7 @@ function addSplScrapRow(values = {}) {
   row.appendChild(actionsTd);
 
   splBody.appendChild(row);
+  bindCatalogInputsForRow(row, splScrapColumns);
   applySplScrapRowShipmentMode(row, getSplScrapIsScrapMode());
   updateSplScrapRowComputedFields(row);
   updateTableScroll(splBody);
@@ -1633,7 +1888,8 @@ async function loadFileForEdit(docId, docType) {
 }
 
 if (fileType) {
-  fileType.addEventListener("change", (e) => {
+  fileType.addEventListener("change", async (e) => {
+    await loadManualCatalogOptions(true);
     showFormat(e.target.value);
   });
 
@@ -1641,10 +1897,19 @@ if (fileType) {
   showFormat(fileType.value);
 }
 
+loadManualCatalogOptions();
+window.addEventListener("focus", () => {
+  loadManualCatalogOptions(true);
+});
+
 if (createFileButton) {
-  createFileButton.addEventListener("click", () => {
+  createFileButton.addEventListener("click", async () => {
     if (!fileType || !fileType.value) {
       renderErrorList([{ message: "Selecciona un tipo de archivo." }]);
+      return;
+    }
+    await loadManualCatalogOptions(true);
+    if (!validateCatalogInputsForDocumentType(fileType.value)) {
       return;
     }
     if (fileType.value === "finishedProduct") {
@@ -1695,6 +1960,7 @@ if (updateFileButton) {
       return;
     }
     const targetType = fileType.value;
+    await loadManualCatalogOptions(true);
       if (
         targetType !== "finishedProduct" &&
         targetType !== "rawMaterial" &&
@@ -1706,6 +1972,9 @@ if (updateFileButton) {
         ]);
         return;
       }
+    if (!validateCatalogInputsForDocumentType(targetType)) {
+      return;
+    }
 
       const rows =
         targetType === "rawMaterial"

@@ -2,30 +2,29 @@
 const path = require("path");
 const fs = require("fs");
 
-// Carga opcional de 'xlsx' (no rompe si no está instalado)
 let xlsx = null;
 try {
   xlsx = require("xlsx");
-} catch (e) {
+} catch (_) {
   console.warn(
-    "[CountryCatalog] Paquete 'xlsx' no instalado; se usará solo el catálogo estático."
+    "[CountryCatalog] Paquete 'xlsx' no instalado; se usara solo el catalogo estatico."
   );
 }
 
-const CATALOG_PATH =
-  process.env.COUNTRY_CATALOG_PATH ||
-  path.join(__dirname, "Country of Origin catalog.xlsx");
+const DEFAULT_COUNTRY_FILES = [
+  "Country_of_Origin_catalog.xlsx",
+  "Country of Origin catalog.xlsx",
+];
 
-// Permite desactivar la lectura de Excel aunque 'xlsx' esté instalado
 const DISABLE_EXCEL =
   (process.env.COUNTRY_CATALOG_DISABLE_EXCEL || "false").toLowerCase() ===
   "true";
+const CATALOG_SIGNATURE_TTL_MS = Number(
+  process.env.CATALOG_SIGNATURE_TTL_MS || 1000
+);
 
 let cache = null;
 
-// ------------------------------
-// Catálogo ESTÁTICO (fallback)
-// ------------------------------
 const COUNTRY_BY_CODE = {
   AD: "ANDORRA",
   AE: "EMIRATOS ARABES UNIDOS",
@@ -80,7 +79,7 @@ const COUNTRY_BY_CODE = {
   CR: "COSTA RICA",
   CU: "CUBA",
   CV: "CABO VERDE",
-  CW: "CURAÇAO",
+  CW: "CURACAO",
   CX: "NAVIDAD, ISLA",
   CY: "CHIPRE",
   CZ: "REPUBLICA CHECA",
@@ -95,7 +94,7 @@ const COUNTRY_BY_CODE = {
   EG: "EGIPTO",
   EH: "SAHARA OCCIDENTAL",
   ER: "ERITREA",
-  ES: "ESPAÑA",
+  ES: "ESPANA",
   ET: "ETIOPIA",
   FI: "FINLANDIA",
   FJ: "FIYI",
@@ -279,9 +278,6 @@ const COUNTRY_BY_CODE = {
   ZW: "ZIMBABWE",
 };
 
-// ------------------------------
-// Detección de columnas en Excel
-// ------------------------------
 const CODE_KEYS = [
   "CVE_PAIS",
   "CLAVE",
@@ -292,7 +288,7 @@ const CODE_KEYS = [
   "ALPHA2",
   "PAIS_COD",
   "CODIGO",
-].map((s) => s.toUpperCase());
+].map((value) => value.toUpperCase());
 
 const NAME_KEYS = [
   "DESCRIP",
@@ -302,31 +298,76 @@ const NAME_KEYS = [
   "NAME",
   "NOMBRE",
   "DESCRIPCION",
-].map((s) => s.toUpperCase());
+].map((value) => value.toUpperCase());
 
-function pickColumn(obj, candidatesUpper) {
-  const keys = Object.keys(obj);
-  for (const k of keys) {
-    if (candidatesUpper.includes(k.toUpperCase())) return k;
+const resolveCatalogPath = () => {
+  const envPath = process.env.COUNTRY_CATALOG_PATH;
+  if (envPath && fs.existsSync(envPath)) return envPath;
+
+  for (const name of DEFAULT_COUNTRY_FILES) {
+    const candidate = path.join(__dirname, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return path.join(__dirname, DEFAULT_COUNTRY_FILES[0]);
+};
+
+const pickColumn = (row, candidatesUpper) => {
+  const keys = Object.keys(row);
+  for (const key of keys) {
+    if (candidatesUpper.includes(key.toUpperCase())) return key;
   }
   return null;
-}
+};
 
-function normalizeName(s) {
-  return String(s || "")
+const normalizeName = (value) =>
+  String(value || "")
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
     .toUpperCase()
     .trim();
-}
 
-// ------------------------------
-// Carga (una vez) con fallback
-// ------------------------------
+const getCatalogSignature = (filePath) => {
+  const parts = [
+    filePath || "",
+    DISABLE_EXCEL ? "excel-disabled" : "excel-enabled",
+    xlsx ? "xlsx-present" : "xlsx-missing",
+  ];
+
+  try {
+    if (filePath && fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      parts.push(`${stats.size}:${stats.mtimeMs}`);
+    } else {
+      parts.push("missing");
+    }
+  } catch (error) {
+    parts.push(`stat-error:${error.message}`);
+  }
+
+  return parts.join("|");
+};
+
+const buildCountryOptions = (codeToName) =>
+  Array.from(codeToName.keys()).sort((left, right) => left.localeCompare(right));
+
 function loadCatalogOnce() {
-  if (cache) return cache;
+  const now = Date.now();
+  if (
+    cache &&
+    Number.isFinite(cache.checkedAt) &&
+    now - cache.checkedAt < CATALOG_SIGNATURE_TTL_MS
+  ) {
+    return cache;
+  }
 
-  // 1) Semilla desde el catálogo estático
+  const catalogPath = resolveCatalogPath();
+  const signature = getCatalogSignature(catalogPath);
+  if (cache && cache.signature === signature) {
+    cache.checkedAt = now;
+    return cache;
+  }
+
   const codeToName = new Map(Object.entries(COUNTRY_BY_CODE));
   const nameToCode = new Map(
     Object.entries(COUNTRY_BY_CODE).map(([code, name]) => [
@@ -335,12 +376,11 @@ function loadCatalogOnce() {
     ])
   );
 
-  let sourceMsg = `[CountryCatalog] Usando catálogo estático (${codeToName.size} países).`;
+  let sourceMsg = `[CountryCatalog] Usando catalogo estatico (${codeToName.size} paises).`;
 
-  // 2) Si hay Excel, lo cargamos y SOBREESCRIBIMOS/ACTUALIZAMOS
   try {
-    if (!DISABLE_EXCEL && xlsx && fs.existsSync(CATALOG_PATH)) {
-      const wb = xlsx.readFile(CATALOG_PATH);
+    if (!DISABLE_EXCEL && xlsx && fs.existsSync(catalogPath)) {
+      const wb = xlsx.readFile(catalogPath);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = xlsx.utils.sheet_to_json(ws, { defval: "" });
 
@@ -350,48 +390,50 @@ function loadCatalogOnce() {
 
         if (codeKey && nameKey) {
           let overrides = 0;
-          for (const r of rows) {
-            const code = String(r[codeKey] || "")
+          for (const row of rows) {
+            const code = String(row[codeKey] || "")
               .trim()
               .toUpperCase();
-            const name = String(r[nameKey] || "").trim();
+            const name = String(row[nameKey] || "").trim();
             if (!code) continue;
 
-            codeToName.set(code, name); // override/insert
-            nameToCode.set(normalizeName(name), code); // index inverso
-            overrides++;
+            codeToName.set(code, name);
+            nameToCode.set(normalizeName(name), code);
+            overrides += 1;
           }
-          sourceMsg = `[CountryCatalog] Catálogo estático (${
+
+          sourceMsg = `[CountryCatalog] Catalogo estatico (${
             Object.keys(COUNTRY_BY_CODE).length
-          }) + Excel (${overrides} entradas) desde ${CATALOG_PATH}`;
+          }) + Excel (${overrides} entradas) desde ${catalogPath}`;
         } else {
-          sourceMsg += ` Excel encontrado pero sin columnas reconocibles en ${CATALOG_PATH}`;
+          sourceMsg += ` Excel encontrado pero sin columnas reconocibles en ${catalogPath}`;
         }
       } else {
-        sourceMsg += ` Excel vacío en ${CATALOG_PATH}`;
+        sourceMsg += ` Excel vacio en ${catalogPath}`;
       }
-    } else {
-      if (DISABLE_EXCEL) {
-        sourceMsg +=
-          " Lectura de Excel desactivada por env (COUNTRY_CATALOG_DISABLE_EXCEL=true).";
-      } else if (!xlsx) {
-        sourceMsg += " Paquete 'xlsx' no instalado.";
-      } else if (!fs.existsSync(CATALOG_PATH)) {
-        sourceMsg += ` Excel no encontrado en ${CATALOG_PATH}`;
-      }
+    } else if (DISABLE_EXCEL) {
+      sourceMsg +=
+        " Lectura de Excel desactivada por env (COUNTRY_CATALOG_DISABLE_EXCEL=true).";
+    } else if (!xlsx) {
+      sourceMsg += " Paquete 'xlsx' no instalado.";
+    } else if (!fs.existsSync(catalogPath)) {
+      sourceMsg += ` Excel no encontrado en ${catalogPath}`;
     }
-  } catch (e) {
-    sourceMsg += ` (no se pudo leer Excel: ${e.message})`;
+  } catch (error) {
+    sourceMsg += ` (no se pudo leer Excel: ${error.message})`;
   }
 
   console.log(sourceMsg);
-  cache = { codeToName, nameToCode };
+  cache = {
+    codeToName,
+    nameToCode,
+    options: buildCountryOptions(codeToName),
+    signature,
+    checkedAt: now,
+  };
   return cache;
 }
 
-// ------------------------------
-// API pública
-// ------------------------------
 function isValidCountryCode(code) {
   const { codeToName } = loadCatalogOnce();
   return codeToName.has(
@@ -418,10 +460,16 @@ function nameToCodeFn(name) {
   return nameToCode.get(normalizeName(name)) || null;
 }
 
+function getCountryOptions() {
+  const { options } = loadCatalogOnce();
+  return options.slice();
+}
+
 module.exports = {
-  COUNTRY_BY_CODE, // por si necesitas inspeccionarlo en algún lugar
+  COUNTRY_BY_CODE,
   loadCatalogOnce,
   isValidCountryCode,
   codeToName: codeToNameFn,
   nameToCode: nameToCodeFn,
+  getCountryOptions,
 };

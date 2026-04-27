@@ -1,5 +1,6 @@
 const { getRegistryEntry } = require("../data/documentTypeRegistry");
 const { isValidCountryCode } = require("../data/countryCatalog");
+const { isValidUOMCode } = require("../data/uomCatalog");
 
 // Reglas de formato
 const HTS_FORMATTED_RE = /^\d{4}\.\d{2}\.\d{4}$/; // ####.##.####
@@ -204,6 +205,28 @@ const validateDataIntegrity = (data, documentType, options = {}) => {
             field: cooFieldName,
             row: rowNum,
             value: coo,
+          });
+        }
+      }
+    }
+
+    const uomFieldName = [
+      "Unit Of Measure",
+      "Unit of Measure",
+      "Unit of measure",
+    ].find((fieldName) => Object.prototype.hasOwnProperty.call(record, fieldName));
+
+    if (uomFieldName) {
+      const uom = record[uomFieldName];
+      if (!isBlank(uom)) {
+        const code = String(uom).trim().toUpperCase();
+        if (!isValidUOMCode(code)) {
+          errors.push({
+            type: "Integrity Error",
+            message: `Row ${rowNum}: "${uomFieldName}" must be a valid uppercase code from catalog. Got "${uom}".`,
+            field: uomFieldName,
+            row: rowNum,
+            value: uom,
           });
         }
       }
