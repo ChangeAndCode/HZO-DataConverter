@@ -145,6 +145,13 @@ const cloneAdminFileRows = (rows) => {
   });
 };
 
+const generateAdminFileNomenclature = (documentType, rows) =>
+  fileConversionService.generateOutputFileNameForDocument(
+    documentType,
+    cloneAdminFileRows(rows),
+    getDefaultFormat(documentType),
+  );
+
 const createAdminFileDocument = async ({
   documentType,
   adminFileName,
@@ -690,12 +697,10 @@ const downloadAdminFileById = async (req, res) => {
     if (type === "billOfMaterials") fallbackName = "billOfMaterials.txt";
     if (type === "splScrap") fallbackName = "splScrap.csv";
     const nomenclature =
-      typeof outputFileName === "string" && outputFileName
+      doc.lastDownloadedName ||
+      (typeof outputFileName === "string" && outputFileName
         ? outputFileName
-        : fallbackName;
-
-    doc.lastDownloadedName = nomenclature;
-    await doc.save();
+        : fallbackName);
 
     return res.download(convertedFilePath, nomenclature, (err) => {
       if (err) {
@@ -738,10 +743,12 @@ const copyAdminFileById = async (req, res) => {
     });
 
     await assertAdminFileNameAvailable(normalizedName);
+    const nextNomenclature = generateAdminFileNomenclature(type, doc.rows);
 
     const result = await createAdminFileDocument({
       documentType: type,
       adminFileName: normalizedName,
+      lastDownloadedName: nextNomenclature,
       userId: req.user.id,
       rows: doc.rows,
     });
@@ -813,6 +820,7 @@ const updateAdminFileById = async (req, res) => {
     doc.rows = Array.isArray(validationResult.transformedData.Sheet1)
       ? validationResult.transformedData.Sheet1
       : [];
+    doc.lastDownloadedName = generateAdminFileNomenclature(type, doc.rows);
     doc.markModified("rows");
     doc.updatedBy = req.user.id;
 

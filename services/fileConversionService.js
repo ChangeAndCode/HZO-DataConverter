@@ -80,6 +80,36 @@ const normalizeManualValidationOptions = (documentType, validationOptions = {}) 
   };
 };
 
+const getOutputBaseNameForDocument = (
+  documentType,
+  rows = [],
+  date = new Date(),
+) => {
+  if (documentType === "splScrap") {
+    const prefix = pickSplScrapPrefix({ Sheet1: Array.isArray(rows) ? rows : [] });
+    return generateSplScrapFilename(prefix, date);
+  }
+
+  const typePrefixMap = {
+    finishedProduct: "FG",
+    rawMaterial: "RM",
+    billOfMaterials: "BM",
+  };
+  const fileType = typePrefixMap[documentType];
+  return fileType ? generateFilename(fileType, date) : `MANUAL_${date.getTime()}`;
+};
+
+const generateOutputFileNameForDocument = (
+  documentType,
+  rows = [],
+  outputFormat,
+  date = new Date(),
+) => {
+  const outputExt = outputFormat || getDefaultFormat(documentType) || "txt";
+  const outputBaseName = getOutputBaseNameForDocument(documentType, rows, date);
+  return `${outputBaseName}.${outputExt}`;
+};
+
 const validateTransformedDataForDocument = async (
   transformedData,
   documentType,
@@ -281,25 +311,12 @@ const processManualDataForConversion = async (
   // Step 3: Output file generation (optional)
   const outputExt = outputFormat || getDefaultFormat(documentType) || "txt";
   const isSplScrap = documentType === "splScrap";
-
-  // Build a consistent base name for output + error report
-  let outputBaseName = null;
-  if (isSplScrap) {
-    const prefix = pickSplScrapPrefix(transformedData);
-    outputBaseName = generateSplScrapFilename(prefix, new Date());
-  } else {
-    const typePrefixMap = {
-      finishedProduct: "FG",
-      rawMaterial: "RM",
-      billOfMaterials: "BM",
-    };
-    const fileType = typePrefixMap[documentType];
-    outputBaseName = fileType
-      ? generateFilename(fileType, new Date())
-      : `MANUAL_${Date.now()}`;
-  }
-
+  const outputBaseName = getOutputBaseNameForDocument(
+    documentType,
+    transformedData.Sheet1,
+  );
   const outputFileName = `${outputBaseName}.${outputExt}`;
+
   let convertedFilePath = null;
 
   if (!hasErrors || WRITE_TXT_ON_VALIDATION_ERROR) {
@@ -553,4 +570,5 @@ module.exports = {
   processFileForConversion,
   processManualDataForConversion,
   validateManualRowsForDocument,
+  generateOutputFileNameForDocument,
 };
