@@ -254,7 +254,7 @@ const splScrapColumns = [
     key: "totalValueUsd",
     label: "Total Value (USD)",
     maxLength: 17,
-    required: true,
+    derived: true,
   },
   {
     key: "unitNetWeight",
@@ -396,6 +396,14 @@ function addFinishedProductRow(values = {}) {
       input.addEventListener("input", () => {
         input.value = input.value.toUpperCase();
       });
+    }
+    if (col.derived) {
+      input.readOnly = true;
+      input.tabIndex = -1;
+      input.setAttribute("aria-readonly", "true");
+      input.dataset.skipNavigation = "true";
+      input.title =
+        "Este valor se calcula automáticamente con Quantity, Unit Value y Added Value.";
     }
     // Autoformato y límite estricto para HTS Code (finishedProduct)
     if (col.key === "usaImportHts" || col.key === "usaExportCode") {
@@ -858,6 +866,60 @@ function formatYmdCompact(value) {
   return raw;
 }
 
+function parseSplScrapNumericInput(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/,/g, "");
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatSplScrapDerivedNumber(value) {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round((value + Number.EPSILON) * 1e8) / 1e8;
+  return rounded.toFixed(8).replace(/\.?0+$/, "");
+}
+
+function calculateSplScrapTotalValue(quantityValue, unitValue, addedValue) {
+  const quantity = parseSplScrapNumericInput(quantityValue);
+  const unitValueUsd = parseSplScrapNumericInput(unitValue);
+  const addedValueUsd = parseSplScrapNumericInput(addedValue);
+
+  if (
+    quantity === null ||
+    unitValueUsd === null ||
+    addedValueUsd === null
+  ) {
+    return "";
+  }
+
+  return formatSplScrapDerivedNumber(
+    (unitValueUsd + addedValueUsd) * quantity,
+  );
+}
+
+function getSplScrapRowField(rowElement, key) {
+  if (!rowElement) return null;
+  return rowElement.querySelector(`[data-spl-key="${key}"]`);
+}
+
+function updateSplScrapRowComputedFields(rowElement) {
+  if (!rowElement) return;
+
+  const quantityInput = getSplScrapRowField(rowElement, "quantity");
+  const unitValueInput = getSplScrapRowField(rowElement, "unitValueUsd");
+  const addedValueInput = getSplScrapRowField(rowElement, "addedValueUsd");
+  const totalValueInput = getSplScrapRowField(rowElement, "totalValueUsd");
+
+  if (!totalValueInput) return;
+
+  totalValueInput.value = calculateSplScrapTotalValue(
+    quantityInput ? quantityInput.value : "",
+    unitValueInput ? unitValueInput.value : "",
+    addedValueInput ? addedValueInput.value : "",
+  );
+}
+
 function buildSplScrapMetaFields() {
   if (!splMetaContainer) return;
   splMetaContainer.innerHTML = "";
@@ -945,7 +1007,9 @@ function buildSplScrapTable() {
 
 function getSplScrapRowEditors(rowElement) {
   if (!rowElement) return [];
-  return Array.from(rowElement.querySelectorAll("input, select"));
+  return Array.from(rowElement.querySelectorAll("input, select")).filter(
+    (element) => element.dataset.skipNavigation !== "true",
+  );
 }
 
 function addSplScrapRow(values = {}) {
@@ -977,6 +1041,13 @@ function addSplScrapRow(values = {}) {
       if (col.maxLength) input.maxLength = col.maxLength;
     }
     input.name = `splScrap[${col.key}][]`;
+    input.dataset.splKey = col.key;
+    if (col.derived) {
+      input.readOnly = true;
+      input.dataset.skipNavigation = "true";
+      input.title =
+        "Este valor se calcula automáticamente con Quantity, Unit Value y Added Value.";
+    }
     if (col.required) input.required = true;
     const initialValue =
       col.label && values && values[col.label] !== undefined
@@ -1005,6 +1076,16 @@ function addSplScrapRow(values = {}) {
           formatted = formatted.slice(0, 7) + "." + formatted.slice(7);
         // Limitar a 12 caracteres exactos xxxx.xx.xxxx
         input.value = formatted.slice(0, 12);
+      });
+    }
+    if (
+      input.tagName === "INPUT" &&
+      (col.key === "quantity" ||
+        col.key === "unitValueUsd" ||
+        col.key === "addedValueUsd")
+    ) {
+      input.addEventListener("input", () => {
+        updateSplScrapRowComputedFields(row);
       });
     }
     // Navegación por teclado con Enter
@@ -1088,6 +1169,7 @@ function addSplScrapRow(values = {}) {
   row.appendChild(actionsTd);
 
   splBody.appendChild(row);
+  updateSplScrapRowComputedFields(row);
   updateTableScroll(splBody);
 }
 
@@ -1279,6 +1361,7 @@ function collectSplScrapRows() {
   const meta = collectSplScrapMeta();
   const rows = [];
   splBody.querySelectorAll("tr").forEach((tr) => {
+    updateSplScrapRowComputedFields(tr);
     const inputs = tr.querySelectorAll("input, select");
     const row = {};
     splScrapColumns.forEach((col, idx) => {

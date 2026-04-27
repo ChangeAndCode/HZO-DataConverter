@@ -30,6 +30,11 @@ const validateDataIntegrity = (data, documentType, options = {}) => {
     typeof options.allowEmptyMandatoryFields === "boolean"
       ? options.allowEmptyMandatoryFields
       : DEFAULT_ALLOW_EMPTY_MANDATORY_FIELDS;
+  const skippedMandatoryFields = new Set(
+    Array.isArray(options.skipMandatoryFields)
+      ? options.skipMandatoryFields
+      : [],
+  );
   const { schemaSpec } = getRegistryEntry(documentType);
   const partNumberSpec =
     documentType === "finishedProduct"
@@ -58,7 +63,8 @@ const validateDataIntegrity = (data, documentType, options = {}) => {
       if (
         fieldSpec.requirement === "M" &&
         isBlank(value) &&
-        !allowEmptyMandatoryFields
+        !allowEmptyMandatoryFields &&
+        !skippedMandatoryFields.has(fieldName)
       ) {
         errors.push({
           type: "Integrity Error",

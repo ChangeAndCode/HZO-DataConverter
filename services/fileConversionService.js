@@ -18,6 +18,67 @@ const { getDefaultFormat } = require("../utils/documentFormatRules");
 const WRITE_TXT_ON_VALIDATION_ERROR =
   (process.env.WRITE_TXT_ON_VALIDATION_ERROR || "false").toLowerCase() ===
   "true";
+const SPLSCRAP_TOTAL_VALUE_FIELD = "Total Value (USD)";
+
+const parseManualNumericValue = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/,/g, "");
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatDerivedNumericValue = (value) => {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round((value + Number.EPSILON) * 1e8) / 1e8;
+  return rounded.toFixed(8).replace(/\.?0+$/, "");
+};
+
+const deriveSplScrapTotalValue = (row = {}) => {
+  const quantity = parseManualNumericValue(row["Quantity"]);
+  const unitValue = parseManualNumericValue(row["Unit Value (USD)"]);
+  const addedValue = parseManualNumericValue(row["Added Value (USD)"]);
+
+  if (quantity === null || unitValue === null || addedValue === null) {
+    return "";
+  }
+
+  return formatDerivedNumericValue((unitValue + addedValue) * quantity);
+};
+
+const normalizeManualRowsForDocument = (rows, documentType) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  if (documentType !== "splScrap") {
+    return safeRows.map((row) =>
+      row && typeof row === "object" && !Array.isArray(row) ? { ...row } : row,
+    );
+  }
+
+  return safeRows.map((row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+    return {
+      ...row,
+      [SPLSCRAP_TOTAL_VALUE_FIELD]: deriveSplScrapTotalValue(row),
+    };
+  });
+};
+
+const normalizeManualValidationOptions = (documentType, validationOptions = {}) => {
+  if (documentType !== "splScrap") return validationOptions;
+
+  const skippedFields = new Set(
+    Array.isArray(validationOptions.skipMandatoryFields)
+      ? validationOptions.skipMandatoryFields
+      : [],
+  );
+  skippedFields.add(SPLSCRAP_TOTAL_VALUE_FIELD);
+
+  return {
+    ...validationOptions,
+    skipMandatoryFields: Array.from(skippedFields),
+  };
+};
 
 const validateTransformedDataForDocument = async (
   transformedData,
@@ -70,11 +131,13 @@ const validateManualRowsForDocument = async (
   documentType,
   validationOptions = {}
 ) => {
-  const parsedData = { Sheet1: Array.isArray(rows) ? rows : [] };
+  const parsedData = {
+    Sheet1: normalizeManualRowsForDocument(rows, documentType),
+  };
   return validateParsedDataForDocument(
     parsedData,
     documentType,
-    validationOptions
+    normalizeManualValidationOptions(documentType, validationOptions)
   );
 };
 
