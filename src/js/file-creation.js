@@ -2042,6 +2042,7 @@ function addSplScrapRow(values = {}) {
 }
 
 function showFormat(type) {
+  resetValidationResult();
   sections.forEach((s) => s.classList.add("hidden"));
   const id = map[type];
   if (id) {
@@ -2111,6 +2112,13 @@ function renderErrorList(errors, title = "Errores") {
     ul.appendChild(li);
   });
   validationResult.append(h4, ul);
+}
+
+function resetValidationResult() {
+  if (!validationResult) return;
+  validationResult.classList.remove("success", "error", "warning");
+  validationResult.classList.add("hidden");
+  validationResult.innerHTML = "";
 }
 
 function getDocumentTypeLabel(documentType) {
