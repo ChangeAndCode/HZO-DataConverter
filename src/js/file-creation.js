@@ -326,6 +326,7 @@ const manualCatalogState = {
 };
 let manualCatalogLoadPromise = null;
 let activeCatalogAutocompleteInput = null;
+let activeStaticDropdownInput = null;
 const CATALOG_AUTOCOMPLETE_MAX_VISIBLE_OPTIONS = 10;
 const CATALOG_AUTOCOMPLETE_WIDTH_PX = 140;
 
@@ -749,7 +750,239 @@ function bindCatalogInputsForRow(rowElement, columns = []) {
     if (catalogKey && editor && editor.tagName === "INPUT") {
       bindCatalogAutocompleteInput(editor, catalogKey);
     }
+    if (column?.key === "regime" && editor && editor.tagName === "INPUT") {
+      bindStaticOptionsDropdownInput(editor, column.options, {
+        placeholder: "-- Seleccione --",
+      });
+    }
   });
+}
+
+function getStaticDropdownOptions(input) {
+  return Array.isArray(input?._staticDropdownOptions)
+    ? input._staticDropdownOptions
+    : [];
+}
+
+function closeStaticDropdownMenu(input) {
+  if (!input) return;
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+  ui.menu.classList.add("hidden");
+  ui.wrapper.classList.remove("catalog-autocomplete-open");
+  delete input.dataset.staticDropdownActiveIndex;
+  if (activeStaticDropdownInput === input) {
+    activeStaticDropdownInput = null;
+  }
+}
+
+function closeAllStaticDropdownMenus(exceptInput = null) {
+  document
+    .querySelectorAll('input[data-static-dropdown="true"]')
+    .forEach((input) => {
+      if (input !== exceptInput) closeStaticDropdownMenu(input);
+    });
+}
+
+function updateStaticDropdownActiveOption(input, nextIndex) {
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+
+  const options = Array.from(
+    ui.menu.querySelectorAll(".catalog-autocomplete-option"),
+  );
+  if (!options.length) {
+    delete input.dataset.staticDropdownActiveIndex;
+    return;
+  }
+
+  const boundedIndex = Math.max(0, Math.min(nextIndex, options.length - 1));
+  input.dataset.staticDropdownActiveIndex = String(boundedIndex);
+
+  options.forEach((optionButton, index) => {
+    optionButton.classList.toggle("is-active", index === boundedIndex);
+  });
+
+  const activeOption = options[boundedIndex];
+  if (activeOption) {
+    activeOption.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function selectStaticDropdownOption(input, optionValue) {
+  if (!input) return;
+  input.value = String(optionValue || "").trim();
+  input.setCustomValidity("");
+  closeStaticDropdownMenu(input);
+}
+
+function renderStaticDropdownMenu(input) {
+  if (!input) return;
+
+  const ui = getCatalogAutocompleteUi(input);
+  if (!ui) return;
+
+  closeAllCatalogAutocompleteMenus();
+  closeAllStaticDropdownMenus(input);
+  updateCatalogAutocompleteWidth(input);
+  ui.menu.innerHTML = "";
+
+  const placeholder = input.dataset.staticDropdownPlaceholder || "-- Seleccione --";
+  const options = [
+    { value: "", label: placeholder },
+    ...getStaticDropdownOptions(input).map((optionValue) => ({
+      value: optionValue,
+      label: optionValue,
+    })),
+  ];
+
+  options.forEach((optionData, index) => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "catalog-autocomplete-option";
+    optionButton.textContent = optionData.label;
+    optionButton.dataset.optionValue = optionData.value;
+    optionButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      selectStaticDropdownOption(input, optionData.value);
+    });
+    ui.menu.appendChild(optionButton);
+
+    const isCurrent =
+      normalizeCatalogCodeValue(input.value) ===
+      normalizeCatalogCodeValue(optionData.value);
+    if (isCurrent || (!input.value && index === 0)) {
+      optionButton.classList.add("is-active");
+      input.dataset.staticDropdownActiveIndex = String(index);
+    }
+  });
+
+  ui.menu.classList.remove("hidden");
+  ui.wrapper.classList.add("catalog-autocomplete-open");
+  activeStaticDropdownInput = input;
+
+  const initialIndex = Number.parseInt(
+    input.dataset.staticDropdownActiveIndex || "0",
+    10,
+  );
+  updateStaticDropdownActiveOption(input, initialIndex);
+}
+
+function bindStaticOptionsDropdownInput(
+  input,
+  options = [],
+  { placeholder = "-- Seleccione --" } = {},
+) {
+  if (!input) return;
+
+  input.dataset.staticDropdown = "true";
+  input.dataset.staticDropdownPlaceholder = placeholder;
+  input._staticDropdownOptions = Array.from(
+    new Map(
+      (Array.isArray(options) ? options : [])
+        .map((optionValue) => String(optionValue || "").trim())
+        .filter(Boolean)
+        .map((optionValue) => [
+          normalizeCatalogCodeValue(optionValue),
+          optionValue,
+        ]),
+    ).values(),
+  );
+  input.readOnly = true;
+  input.placeholder = placeholder;
+  input.spellcheck = false;
+
+  const ui = getCatalogAutocompleteUi(input);
+  updateCatalogAutocompleteWidth(input);
+
+  if (input.dataset.staticDropdownBound === "true") return;
+
+  input.addEventListener("focus", () => {
+    renderStaticDropdownMenu(input);
+  });
+
+  input.addEventListener("click", () => {
+    renderStaticDropdownMenu(input);
+  });
+
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      closeStaticDropdownMenu(input);
+    }, 120);
+  });
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      const ui = getCatalogAutocompleteUi(input);
+      if (!ui || ui.menu.classList.contains("hidden")) return;
+
+      const optionButtons = Array.from(
+        ui.menu.querySelectorAll(".catalog-autocomplete-option"),
+      );
+      if (!optionButtons.length) return;
+
+      const currentIndex = Number.parseInt(
+        input.dataset.staticDropdownActiveIndex || "0",
+        10,
+      );
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        event.stopPropagation();
+        updateStaticDropdownActiveOption(input, currentIndex + 1);
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        updateStaticDropdownActiveOption(input, currentIndex - 1);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const nextIndex = Number.parseInt(
+          input.dataset.staticDropdownActiveIndex || "0",
+          10,
+        );
+        const activeOption = optionButtons[nextIndex] || optionButtons[0];
+        if (activeOption) {
+          selectStaticDropdownOption(
+            input,
+            activeOption.dataset.optionValue || "",
+          );
+        }
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeStaticDropdownMenu(input);
+      }
+    },
+    true,
+  );
+
+  if (ui && ui.toggle) {
+    ui.toggle.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    ui.toggle.addEventListener("click", () => {
+      input.focus();
+      const isHidden = ui.menu.classList.contains("hidden");
+      if (isHidden) {
+        renderStaticDropdownMenu(input);
+      } else {
+        closeStaticDropdownMenu(input);
+      }
+    });
+  }
+
+  input.dataset.staticDropdownBound = "true";
 }
 
 function getCatalogInputsForDocumentType(documentType) {
@@ -1644,11 +1877,8 @@ function addSplScrapRow(values = {}) {
   splScrapColumns.forEach((col) => {
     const td = document.createElement("td");
     let input;
-    if (Array.isArray(col.options)) {
+    if (Array.isArray(col.options) && col.key !== "regime") {
       input = document.createElement("select");
-      if (col.key === "regime") {
-        input.classList.add("spl-regime-select");
-      }
       const emptyOpt = document.createElement("option");
       emptyOpt.value = "";
       emptyOpt.textContent = "-- Seleccione --";
@@ -1662,7 +1892,11 @@ function addSplScrapRow(values = {}) {
     } else {
       input = document.createElement("input");
       input.type = "text";
-      input.placeholder = col.label;
+      input.placeholder =
+        col.key === "regime" ? "-- Seleccione --" : col.label;
+      if (col.key === "regime") {
+        input.classList.add("spl-regime-select");
+      }
       if (col.maxLength) input.maxLength = col.maxLength;
     }
     input.name = `splScrap[${col.key}][]`;
