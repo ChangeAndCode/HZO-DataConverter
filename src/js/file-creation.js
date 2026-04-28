@@ -1673,6 +1673,61 @@ function handleSplScrapUnitOfMeasureInput(input, finalize = false) {
   input.value = nextValue;
 }
 
+function isSplScrapAutoZeroValue(value) {
+  const normalized = String(value || "").trim();
+  if (normalized === "") return true;
+  const parsed = parseSplScrapNumericInput(normalized);
+  return parsed === 0;
+}
+
+function splScrapRowHasMeaningfulData(rowElement, isScrap = false) {
+  if (!rowElement) return false;
+
+  return splScrapColumns.some((col) => {
+    if (col.derived) return false;
+
+    const field = getSplScrapRowField(rowElement, col.key);
+    if (!field) return false;
+
+    const value = String(field.value || "").trim();
+    if (value === "") return false;
+
+    if (isScrap && col.key === "addedValueUsd" && isSplScrapAutoZeroValue(value)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function normalizeSplScrapRowsForShipmentMode(isScrap) {
+  if (!splBody) return;
+
+  const rows = Array.from(splBody.querySelectorAll("tr"));
+  if (!rows.length) {
+    addSplScrapRow();
+    return;
+  }
+
+  if (!isScrap) return;
+
+  const rowsWithData = rows.filter((rowElement) =>
+    splScrapRowHasMeaningfulData(rowElement, true),
+  );
+  const rowsToKeep =
+    rowsWithData.length > 0 ? new Set(rowsWithData) : new Set([rows[0]]);
+
+  rows.forEach((rowElement) => {
+    if (!rowsToKeep.has(rowElement)) {
+      rowElement.remove();
+    }
+  });
+
+  if (!splBody.children.length) {
+    addSplScrapRow();
+  }
+}
+
 function applySplScrapTypeOfGoodsRestriction(isScrap) {
   const typeOfGoodsInput = splMetaInputs["Type of goods"];
   if (!typeOfGoodsInput) return;
@@ -1776,6 +1831,8 @@ function applySplScrapShipmentMode() {
   splBody.querySelectorAll("tr").forEach((rowElement) => {
     applySplScrapRowShipmentMode(rowElement, isScrap);
   });
+  normalizeSplScrapRowsForShipmentMode(isScrap);
+  updateTableScroll(splBody);
 }
 
 function buildSplScrapMetaFields() {
@@ -2287,6 +2344,7 @@ function collectSplScrapMeta() {
 function collectSplScrapRows() {
   if (!splBody) return [];
   const meta = collectSplScrapMeta();
+  const isScrap = getSplScrapIsScrapMode();
   const rows = [];
   splBody.querySelectorAll("tr").forEach((tr) => {
     updateSplScrapRowComputedFields(tr);
@@ -2296,7 +2354,7 @@ function collectSplScrapRows() {
       const val = inputs[idx] ? inputs[idx].value : "";
       row[col.label] = val;
     });
-    const hasValue = Object.values(row).some((v) => String(v).trim() !== "");
+    const hasValue = splScrapRowHasMeaningfulData(tr, isScrap);
     if (hasValue) rows.push({ ...meta, ...row });
   });
   return rows;
