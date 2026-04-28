@@ -551,6 +551,13 @@ const createManualFile = async (req, res) => {
           validationOptions: { allowEmptyMandatoryFields: false },
         }
       );
+    const lastDownloadedName =
+      typeof outputFileName === "string" ? outputFileName : "";
+    const resolvedAdminFileName =
+      normalizedName || lastDownloadedName;
+    const nomenclature = lastDownloadedName
+      ? path.parse(lastDownloadedName).name
+      : "";
 
     let savedCount = 0;
     let savedDb = "";
@@ -558,16 +565,11 @@ const createManualFile = async (req, res) => {
     if (status === "completed") {
       const rowsToSave = Array.isArray(transformedRows) ? transformedRows : [];
       if (rowsToSave.length > 0) {
-        const adminFileName =
-          normalizedName ||
-          (typeof outputFileName === "string" ? outputFileName : "");
-
-        await assertAdminFileNameAvailable(adminFileName);
+        await assertAdminFileNameAvailable(resolvedAdminFileName);
         const result = await createAdminFileDocument({
           documentType,
-          adminFileName,
-          lastDownloadedName:
-            typeof outputFileName === "string" ? outputFileName : undefined,
+          adminFileName: resolvedAdminFileName,
+          lastDownloadedName: lastDownloadedName || undefined,
           userId: req.user.id,
           sourceJobId: newJob._id,
           rows: rowsToSave,
@@ -592,6 +594,9 @@ const createManualFile = async (req, res) => {
       message: "Archivo procesado exitosamente.",
       jobId: newJob._id,
       documentType,
+      adminFileName: resolvedAdminFileName,
+      lastDownloadedName,
+      nomenclature,
       status,
       errors: errors || [],
       savedCount,

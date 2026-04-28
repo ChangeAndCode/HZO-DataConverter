@@ -252,6 +252,18 @@ body {
   margin-bottom: 15px;
 }
 
+.conversion-result-details {
+  margin-bottom: 15px;
+}
+
+.conversion-result-details p {
+  margin: 0 0 6px;
+}
+
+.conversion-result-details p:last-child {
+  margin-bottom: 0;
+}
+
 .result-actions a {
   margin-right: 15px;
   color: #007bff;

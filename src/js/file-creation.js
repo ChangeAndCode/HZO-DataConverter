@@ -14,6 +14,13 @@ const map = {
   splScrap: "format-splScrap",
 };
 
+const DOCUMENT_TYPE_LABELS = {
+  finishedProduct: "Finished Product",
+  rawMaterial: "Raw Material",
+  billOfMaterials: "Bill of Materials",
+  splScrap: "Packing List (SPL/Scrap)",
+};
+
 const finishedProductColumns = [
   { key: "partNumber", label: "Part Number", maxLength: 30, required: true },
   { key: "description", label: "Description", maxLength: 60, required: true },
@@ -2106,7 +2113,53 @@ function renderErrorList(errors, title = "Errores") {
   validationResult.append(h4, ul);
 }
 
-function renderSuccess(jobId) {
+function getDocumentTypeLabel(documentType) {
+  return DOCUMENT_TYPE_LABELS[documentType] || documentType || "-";
+}
+
+function getNomenclatureFromLastDownloadedName(lastDownloadedName) {
+  const safeValue = String(lastDownloadedName || "").trim();
+  if (!safeValue) return "";
+  const lastDotIndex = safeValue.lastIndexOf(".");
+  return lastDotIndex > 0 ? safeValue.slice(0, lastDotIndex) : safeValue;
+}
+
+function buildCreatedFileDetails({
+  adminFileName = "",
+  nomenclature = "",
+  documentType = "",
+  lastDownloadedName = "",
+} = {}) {
+  const details = document.createElement("div");
+  details.className = "conversion-result-details";
+  const resolvedNomenclature =
+    nomenclature || getNomenclatureFromLastDownloadedName(lastDownloadedName);
+
+  const lines = [
+    ["Nombre", adminFileName || "-"],
+    ["Nomenclatura", resolvedNomenclature || "-"],
+    ["Tipo", getDocumentTypeLabel(documentType)],
+  ];
+
+  lines.forEach(([label, value]) => {
+    const line = document.createElement("p");
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+    line.appendChild(strong);
+    line.appendChild(document.createTextNode(value));
+    details.appendChild(line);
+  });
+
+  return details;
+}
+
+function renderSuccess({
+  jobId,
+  adminFileName = "",
+  nomenclature = "",
+  documentType = "",
+  lastDownloadedName = "",
+} = {}) {
   if (!validationResult) return;
   validationResult.classList.remove("hidden", "success", "error", "warning");
   validationResult.classList.add("success");
@@ -2115,7 +2168,13 @@ function renderSuccess(jobId) {
   const h4 = document.createElement("h4");
   h4.textContent = "Archivo creado";
   const p = document.createElement("p");
-  p.textContent = "El archivo se gener\u00f3 correctamente.";
+  p.textContent = "El archivo se gener\u00f3 autom\u00e1ticamente.";
+  const details = buildCreatedFileDetails({
+    adminFileName,
+    nomenclature,
+    documentType,
+    lastDownloadedName,
+  });
   const actions = document.createElement("div");
   actions.className = "result-actions";
   const link = document.createElement("a");
@@ -2124,7 +2183,7 @@ function renderSuccess(jobId) {
   link.textContent = "Descargar Archivo";
   actions.appendChild(link);
 
-  validationResult.append(h4, p, actions);
+  validationResult.append(h4, p, details, actions);
 }
 
 function renderWarning(errors, jobId) {
@@ -2262,7 +2321,13 @@ async function createManualFile(documentType, rows, displayName) {
       throw new Error(data.message || "Error al crear.");
     }
     if (data.status === "completed") {
-      renderSuccess(data.jobId);
+      renderSuccess({
+        jobId: data.jobId,
+        adminFileName: data.adminFileName,
+        nomenclature: data.nomenclature,
+        documentType: data.documentType,
+        lastDownloadedName: data.lastDownloadedName,
+      });
     } else if (data.status === "completed_with_errors") {
       renderWarning(data.errors || [], data.jobId);
     } else {
