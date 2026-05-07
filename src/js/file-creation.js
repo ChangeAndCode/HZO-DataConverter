@@ -320,7 +320,6 @@ const splMetaContainer = document.getElementById("splMetaFields");
 const splMetaInputs = {};
 let splInitialized = false;
 const SPLSCRAP_SCRAP_TYPE_OF_GOODS = "FG";
-const SPLSCRAP_SCRAP_ALLOWED_UOM = ["KG", "PCS"];
 const manualCatalogState = {
   unitOfMeasure: {
     options: [],
@@ -459,16 +458,6 @@ function getCatalogOptionsForInput(input) {
   if (!input) return [];
   const catalogKey = input.dataset.catalogKey;
   if (!catalogKey || !manualCatalogState[catalogKey]) return [];
-
-  if (
-    catalogKey === "unitOfMeasure" &&
-    input.dataset.scrapRestrictUom === "true"
-  ) {
-    return SPLSCRAP_SCRAP_ALLOWED_UOM.filter((code) =>
-      manualCatalogState.unitOfMeasure.optionsSet.has(code),
-    );
-  }
-
   return manualCatalogState[catalogKey].options;
 }
 
@@ -539,10 +528,7 @@ function selectCatalogAutocompleteOption(input, optionValue) {
   input.value = normalizeCatalogCodeValue(optionValue);
   input.setCustomValidity("");
   if (input.dataset.catalogKey === "unitOfMeasure") {
-    handleSplScrapUnitOfMeasureInput(
-      input,
-      input.dataset.scrapRestrictUom === "true",
-    );
+    handleSplScrapUnitOfMeasureInput(input, true);
   }
   closeCatalogAutocompleteMenu(input);
 }
@@ -614,10 +600,7 @@ function validateCatalogCodeInput(input, { reportIfInvalid = false } = {}) {
     return true;
   }
 
-  const allowedSet =
-    catalogKey === "unitOfMeasure" && input.dataset.scrapRestrictUom === "true"
-      ? new Set(SPLSCRAP_SCRAP_ALLOWED_UOM)
-      : manualCatalogState[catalogKey].optionsSet;
+  const allowedSet = manualCatalogState[catalogKey].optionsSet;
 
   if (allowedSet.size > 0 && !allowedSet.has(nextValue)) {
     const message =
@@ -645,10 +628,7 @@ function bindCatalogAutocompleteInput(input, catalogKey) {
 
   input.addEventListener("input", () => {
     input.value = normalizeCatalogCodeValue(input.value);
-    if (
-      catalogKey === "unitOfMeasure" &&
-      input.dataset.scrapRestrictUom === "true"
-    ) {
+    if (catalogKey === "unitOfMeasure") {
       handleSplScrapUnitOfMeasureInput(input, false);
     }
     input.setCustomValidity("");
@@ -657,10 +637,7 @@ function bindCatalogAutocompleteInput(input, catalogKey) {
 
   input.addEventListener("blur", () => {
     window.setTimeout(() => {
-      if (
-        catalogKey === "unitOfMeasure" &&
-        input.dataset.scrapRestrictUom === "true"
-      ) {
+      if (catalogKey === "unitOfMeasure") {
         handleSplScrapUnitOfMeasureInput(input, true);
       }
       closeCatalogAutocompleteMenu(input);
@@ -1646,31 +1623,7 @@ function getSplScrapIsScrapMode() {
 
 function handleSplScrapUnitOfMeasureInput(input, finalize = false) {
   if (!input) return;
-
-  let nextValue = String(input.value || "").trim().toUpperCase();
-  const isRestricted = input.dataset.scrapRestrictUom === "true";
-
-  if (isRestricted) {
-    if (finalize) {
-      if (
-        nextValue !== "" &&
-        !SPLSCRAP_SCRAP_ALLOWED_UOM.includes(nextValue)
-      ) {
-        nextValue = input.dataset.lastValidScrapUom || "";
-      }
-    } else if (
-      nextValue !== "" &&
-      !SPLSCRAP_SCRAP_ALLOWED_UOM.some((option) => option.startsWith(nextValue))
-    ) {
-      nextValue = input.dataset.lastValidScrapUom || "";
-    }
-
-    if (SPLSCRAP_SCRAP_ALLOWED_UOM.includes(nextValue)) {
-      input.dataset.lastValidScrapUom = nextValue;
-    }
-  }
-
-  input.value = nextValue;
+  input.value = String(input.value || "").trim().toUpperCase();
 }
 
 function isSplScrapAutoZeroValue(value) {
@@ -1787,37 +1740,10 @@ function applySplScrapRowShipmentMode(rowElement, isScrap) {
 
   const unitOfMeasureInput = getSplScrapRowField(rowElement, "unitOfMeasure");
   if (unitOfMeasureInput) {
-    if (isScrap) {
-      if (unitOfMeasureInput.dataset.scrapRestrictUom !== "true") {
-        unitOfMeasureInput.dataset.nonScrapValue =
-          unitOfMeasureInput.value || "";
-      }
-      unitOfMeasureInput.dataset.scrapRestrictUom = "true";
-      unitOfMeasureInput.placeholder = "KG o PCS";
-      unitOfMeasureInput.title =
-        "Solo se permite KG o PCS cuando Type of shipment es Scrap.";
-      handleSplScrapUnitOfMeasureInput(unitOfMeasureInput, false);
-      if (
-        unitOfMeasureInput.value &&
-        !SPLSCRAP_SCRAP_ALLOWED_UOM.includes(unitOfMeasureInput.value)
-      ) {
-        unitOfMeasureInput.value = "";
-      }
-      syncCatalogAutocompleteInput(unitOfMeasureInput);
-    } else {
-      unitOfMeasureInput.dataset.scrapRestrictUom = "false";
-      unitOfMeasureInput.placeholder = "Unit Of Measure";
-      unitOfMeasureInput.removeAttribute("title");
-      if (
-        unitOfMeasureInput.dataset.nonScrapValue !== undefined &&
-        String(unitOfMeasureInput.value || "").trim() === ""
-      ) {
-        unitOfMeasureInput.value = unitOfMeasureInput.dataset.nonScrapValue;
-      }
-      delete unitOfMeasureInput.dataset.nonScrapValue;
-      delete unitOfMeasureInput.dataset.lastValidScrapUom;
-      syncCatalogAutocompleteInput(unitOfMeasureInput);
-    }
+    unitOfMeasureInput.placeholder = "Unit Of Measure";
+    unitOfMeasureInput.removeAttribute("title");
+    handleSplScrapUnitOfMeasureInput(unitOfMeasureInput, false);
+    syncCatalogAutocompleteInput(unitOfMeasureInput);
   }
 
   updateSplScrapRowComputedFields(rowElement);

@@ -547,12 +547,13 @@ async function writeSplScrapCSV(data, filePath) {
   await fs.writeFile(filePath, lines.join("\n"));
 }
 
-// prefix PI for Southbound, PE for Northbound (default PE)
+// prefix PI for Southbound, PE for Northbound and Scrap (default PE)
 const pickSplScrapPrefix = (data) => {
   const rows = data.Sheet1 || [];
   if (!rows.length) return "PE";
   const shipment = String(rows[0]["Type of shipment"] || "").toLowerCase();
   if (shipment.includes("south")) return "PI";
+  if (shipment.includes("scrap")) return "PE";
   if (shipment.includes("north")) return "PE";
   return "PE";
 };

@@ -8,7 +8,6 @@ const PART_NUMBER_RE = /^[A-Z0-9 ._\/-]+$/;
 const isBlank = (v) => v === null || v === undefined || String(v).trim() === "";
 const DEFAULT_ALLOW_EMPTY_MANDATORY_FIELDS =
   (process.env.ALLOW_EMPTY_MANDATORY_FIELDS || "true").toLowerCase() === "true";
-const SPLSCRAP_SCRAP_ALLOWED_UOM = new Set(["KG", "PCS"]);
 
 const normalizeNaftaFlag = (value) => {
   if (value === null || value === undefined) return "";
@@ -353,19 +352,6 @@ const applyBusinessValidations = async (data, documentType) => {
         });
       }
 
-      const unitOfMeasure = String(record["Unit Of Measure"] || "")
-        .trim()
-        .toUpperCase();
-      if (!SPLSCRAP_SCRAP_ALLOWED_UOM.has(unitOfMeasure)) {
-        errors.push({
-          type: "Business Rule Violation",
-          message: `Row ${rowNum}: "Unit Of Measure" must be "KG" or "PCS" when "Type of shipment" is "Scrap".`,
-          field: "Unit Of Measure",
-          row: rowNum,
-          value: record["Unit Of Measure"],
-          expected: ["KG", "PCS"],
-        });
-      }
     });
   }
 
